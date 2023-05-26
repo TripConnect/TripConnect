@@ -41,7 +41,7 @@ export class TripMemberLocation implements Listener {
         this.server = server;
     }
 
-    private forward(location: Location, tripMember: TripMember) {
+    private _forward(location: Location, tripMember: TripMember) {
         let room = tripMember.trip.tripId
         this.server.to(room).emit(
             TripMemberLocation.TOPIC,
@@ -53,16 +53,16 @@ export class TripMemberLocation implements Listener {
         );
     }
 
-    public handle(payload: { userId: string, tripId: string, longitude: number, latitude: number }) {
+    private _handle(payload: { userId: string, tripId: string, longitude: number, latitude: number }) {
         console.info({"topic": TripMemberLocation.TOPIC, ...payload});
         
         const { userId, tripId, longitude, latitude } = payload;
         let location = new Location(longitude, latitude);
         let tripMember = new TripMember(new Trip(tripId), userId);
-        this.forward(location, tripMember);
+        this._forward(location, tripMember);
     }
 
     public listen() {
-        this.server.on(TripMemberLocation.TOPIC, this.handle)
+        this.server.on(TripMemberLocation.TOPIC, this._handle)
     }
 }

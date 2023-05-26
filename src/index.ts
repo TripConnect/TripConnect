@@ -1,17 +1,15 @@
 const http = require('http');
 import express, { Request, Response } from 'express';
+const { Server } = require("socket.io");
+
 import { TripMemberLocation } from './services/socketio';
 
 const app = express();
-
 const server = http.createServer(app);
-const { Server } = require("socket.io");
 const io = new Server(server);
+const PORT = process.env.PORT || 3000;
 
 new TripMemberLocation(io).listen();
-
-
-const PORT = process.env.PORT || 3000;
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, Express with TypeScript!');
