@@ -1,15 +1,21 @@
 const http = require('http');
 import express, { Request, Response } from 'express';
-const { Server } = require("socket.io");
+import { Server } from 'socket.io';
 
-import { TripMemberLocation } from './services/socketio';
+
+import { Test, TripMemberLocation } from './services/socketio';
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-new TripMemberLocation(io).listen();
+io.on("connection", async (socket) => {
+  console.info("connected");
+
+  socket.on(Test.TOPIC, (payload) => Test.handle(server, JSON.parse(payload)));
+  socket.on(TripMemberLocation.TOPIC, (payload) => TripMemberLocation.handle(server, JSON.parse(payload)));
+});
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, Express with TypeScript!');

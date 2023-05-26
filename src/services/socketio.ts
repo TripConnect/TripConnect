@@ -29,21 +29,39 @@ class TripMember {
  * Listener definitions
  */
 
-interface Listener {
-    listen(): void
+abstract class Listener {
+    static handle(server: SocketIOServer, payload: object): void {
+        throw new Error('handle() must be implemented in the derived class');
+    }
 }
 
-export class TripMemberLocation implements Listener {
-    private static TOPIC = "TRIP_MEMBER_LOCATION"
-    server: SocketIOServer
 
-    constructor(server: SocketIOServer) {
-        this.server = server;
+export class Test extends Listener {
+    public static TOPIC = "TEST"
+
+    public static handle(server: SocketIOServer, payload: { message: string }) {
+        console.info({ "topic": Test.TOPIC, payload });
+
+        const { message } = payload;
+        server.emit(Test.TOPIC, { "response": message });
     }
+}
 
-    private _forward(location: Location, tripMember: TripMember) {
+
+export class TripMemberLocation extends Listener {
+    public static TOPIC = "TRIP_MEMBER_LOCATION"
+
+    public static handle(server: SocketIOServer, payload: { userId: string, tripId: string, longitude: number, latitude: number }) {
+        console.info({ "topic": TripMemberLocation.TOPIC, ...payload });
+
+        const { userId, tripId, longitude, latitude } = payload;
+
+        let location = new Location(longitude, latitude);
+        let tripMember = new TripMember(new Trip(tripId), userId);
+        
         let room = tripMember.trip.tripId
-        this.server.to(room).emit(
+        
+        server.to(room).emit(
             TripMemberLocation.TOPIC,
             {
                 user_id: tripMember.userId,
@@ -51,18 +69,5 @@ export class TripMemberLocation implements Listener {
                 latitude: location.latitude,
             }
         );
-    }
-
-    private _handle(payload: { userId: string, tripId: string, longitude: number, latitude: number }) {
-        console.info({"topic": TripMemberLocation.TOPIC, ...payload});
-        
-        const { userId, tripId, longitude, latitude } = payload;
-        let location = new Location(longitude, latitude);
-        let tripMember = new TripMember(new Trip(tripId), userId);
-        this._forward(location, tripMember);
-    }
-
-    public listen() {
-        this.server.on(TripMemberLocation.TOPIC, this._handle)
     }
 }
