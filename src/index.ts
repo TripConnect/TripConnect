@@ -1,9 +1,12 @@
 const http = require('http');
 import express, { Request, Response } from 'express';
 import { Server } from 'socket.io';
-
+import cors from 'cors';
+import { json } from 'body-parser';
+import gqlServer from './services/graphql';
 
 import { Test, TripMemberLocation } from './services/socketio';
+import { expressMiddleware } from '@apollo/server/express4';
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +23,8 @@ io.on("connection", async (socket) => {
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, Express with TypeScript!');
 });
+
+gqlServer.start().then(() => app.use('/graphql', cors<cors.CorsRequest>(), json(), expressMiddleware(gqlServer)));
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
