@@ -14,18 +14,18 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
 io.on("connection", async (socket) => {
-  console.info("connected");
+    console.info("connected");
 
-  socket.on(Test.TOPIC, (payload) => Test.handle(server, JSON.parse(payload)));
-  socket.on(TripMemberLocation.TOPIC, (payload) => TripMemberLocation.handle(server, JSON.parse(payload)));
+    socket.on(Test.TOPIC, (payload) => Test.handle(server, JSON.parse(payload)));
+    socket.on(TripMemberLocation.TOPIC, (payload) => TripMemberLocation.handle(server, JSON.parse(payload)));
 });
 
 app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, Express with TypeScript!');
+    res.send('Hello, Express with TypeScript!');
 });
 
 gqlServer.start().then(() => app.use('/graphql', cors<cors.CorsRequest>(), json(), expressMiddleware(gqlServer)));
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
