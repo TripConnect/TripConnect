@@ -7,28 +7,32 @@ const sequelize = new Sequelize({
 });
 
 // Define the User model
-const UserDAO = sequelize.define('user', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const UserDAO = sequelize.define(
+    'User',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        user_id: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        username: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        created_at: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
+        updated_at: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
     },
-    user_id: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    username: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        allowNull: false
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        allowNull: false
-    },
-});
+    {tableName: 'user'}
+);
 
 export default UserDAO;

@@ -7,28 +7,33 @@ const sequelize = new Sequelize({
 });
 
 // Define the User model
-const UserCredentialDAO = sequelize.define('user_credential', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+const UserCredentialDAO = sequelize.define(
+    'UserCredential',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        user_id: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        credential: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        created_at: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
+        updated_at: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
+
     },
-    user_id: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    credential: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    created_at: {
-        type: DataTypes.DATE,
-        allowNull: false
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        allowNull: false
-    },
-});
+    { tableName: 'user_credential' }
+);
 
 export default UserCredentialDAO;

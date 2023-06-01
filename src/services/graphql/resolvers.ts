@@ -39,7 +39,7 @@ const resolvers = {
 
                 await UserCredentialDAO.create({
                     user_id: uuidv4(),
-                    credentials: hashedPassword,
+                    credential: hashedPassword,
                     created_at: new Date(),
                     updated_at: new Date(),
                 });
