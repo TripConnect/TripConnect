@@ -1,8 +1,8 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 
-import UserDAO from "../../repositories/UserDAO";
-import UserCredentialDAO from "../../repositories/UserCredentialDAO";
+import User from "../../database/models/user";
+import UserCredential from "../../database/models/user_credential";
 
 const resolvers = {
     Query: {
@@ -24,35 +24,31 @@ const resolvers = {
             { username, password }: { username: string, password: string },
             // { dataSources }: { dataSources: any }
         ) => {
-            // try{
-                const salt = await bcrypt.genSalt(12);
-                const hashedPassword = await bcrypt.hash(password, salt);
+            const salt = await bcrypt.genSalt(12);
+            const hashedPassword = await bcrypt.hash(password, salt);
 
-                let user_id = uuidv4();
+            let user_id = uuidv4();
 
-                await UserDAO.create({
-                    user_id,
-                    username,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                });
+            await User.create({
+                user_id,
+                username,
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
 
-                await UserCredentialDAO.create({
-                    user_id: uuidv4(),
-                    credential: hashedPassword,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                });
+            await UserCredential.create({
+                user_id: uuidv4(),
+                credential: hashedPassword,
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
 
-                const isPasswordValid = await bcrypt.compare(password, hashedPassword);
-                if (isPasswordValid) {
-                    return { user_id: "u002" }
-                } else {
-                    throw new Error("User invalid")
-                }
-            // } catch(error) {
-            //     throw new Error("Internal server error");
-            // }
+            const isPasswordValid = await bcrypt.compare(password, hashedPassword);
+            if (isPasswordValid) {
+                return { user_id: "u002" }
+            } else {
+                throw new Error("User invalid")
+            }
         },
     },
 };
