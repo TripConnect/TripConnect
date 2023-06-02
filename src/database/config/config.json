@@ -1,9 +1,6 @@
 {
   "development": {
-    "username": "root",
-    "password": null,
-    "database": "database_development",
-    "storage": "./data/database.sqlite",
+    "storage": "src/database/data/database.sqlite",
     "dialect": "sqlite"
   },
   "test": {
