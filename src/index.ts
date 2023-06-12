@@ -24,7 +24,21 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Hello, Express with TypeScript!');
 });
 
-gqlServer.start().then(() => app.use('/graphql', cors<cors.CorsRequest>(), json(), expressMiddleware(gqlServer)));
+gqlServer
+    .start()
+    .then(() => app.use(
+        '/graphql',
+        cors<cors.CorsRequest>(),
+        json(),
+        expressMiddleware(gqlServer, {
+            context: async ({ req, res }) => {
+                return {
+                    token: req.headers.authorization?.split(" ")[1],
+                }
+            }
+        }
+        )
+    ));
 
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

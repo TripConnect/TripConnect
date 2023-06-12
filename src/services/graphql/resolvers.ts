@@ -6,13 +6,15 @@ import UserCredential from "../../database/models/user_credential";
 
 const resolvers = {
     Query: {
-        access_token: () => ({ user_id: "u001", access_token: "abc", refresh_token: "def" }),
+        access_token: () => {
+            return { user_id: "u001", access_token: "abc", refresh_token: "def" };
+        },
     },
     Mutation: {
         login: async (
             _: any,
             { username, password }: { username: string, password: string },
-            // { dataSources }: { dataSources: any }
+            contextValue: any
         ) => {
             return {
                 token: { user_id: "u001", access_token: "abc", refresh_token: "def" }
