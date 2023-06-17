@@ -1,6 +1,6 @@
-const bcrypt = require('bcrypt');
-const { v4: uuidv4 } = require('uuid');
-const jwt = require('jsonwebtoken');
+import bcrypt from "bcrypt";
+import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
