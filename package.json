@@ -29,6 +29,7 @@
     "cors": "^2.8.5",
     "graphql": "^16.6.0",
     "jsonwebtoken": "^9.0.0",
+    "mysql2": "^3.3.5",
     "sequelize": "^6.31.1",
     "socket.io": "^4.6.1",
     "sqlite3": "^5.1.6",

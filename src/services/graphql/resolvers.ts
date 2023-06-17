@@ -1,55 +1,66 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
 
 const resolvers = {
     Query: {
-        access_token: () => {
-            return { user_id: "u001", access_token: "abc", refresh_token: "def" };
-        },
+        status: async () => {
+            return { status: true };
+        }
     },
     Mutation: {
         login: async (
             _: any,
             { username, password }: { username: string, password: string },
-            contextValue: any
         ) => {
-            return {
-                token: { user_id: "u001", access_token: "abc", refresh_token: "def" }
+            try {
+                let user = await User.findOne({ where: { username } });
+                if (!user) throw new Error("User not found");
+
+                let userCredential = await UserCredential.findOne({ where: { user_id: user.user_id } });
+                const isPasswordValid = await bcrypt.compare(password, userCredential.credential);
+                if (!isPasswordValid) throw new Error("Authorization failed");
+
+                let accessToken = jwt.sign({ username: user.username, password: userCredential.credential }, 'shhhhh');
+
+                return {
+                    token: { user_id: user.user_id, access_token: accessToken }
+                }
+            } catch (error) {
+                console.log(error);
+
+                return { token: null };
             }
         },
 
         register: async (
             _: any,
             { username, password }: { username: string, password: string },
-            // { dataSources }: { dataSources: any }
         ) => {
-            const salt = await bcrypt.genSalt(12);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            try {
+                const salt = await bcrypt.genSalt(12);
+                const hashedPassword = await bcrypt.hash(password, salt);
 
-            let user_id = uuidv4();
+                let user_id = uuidv4();
 
-            await User.create({
-                user_id,
-                username,
-                created_at: new Date(),
-                updated_at: new Date(),
-            });
+                let user = await User.create({
+                    user_id,
+                    username,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                });
 
-            await UserCredential.create({
-                user_id: uuidv4(),
-                credential: hashedPassword,
-                created_at: new Date(),
-                updated_at: new Date(),
-            });
+                await UserCredential.create({
+                    user_id: user.user_id,
+                    credential: hashedPassword,
+                });
 
-            const isPasswordValid = await bcrypt.compare(password, hashedPassword);
-            if (isPasswordValid) {
-                return { user_id: "u002" }
-            } else {
-                throw new Error("User invalid")
+                return { user_id: user.user_id };
+            } catch (error) {
+                return { user_id: null };
             }
         },
     },
