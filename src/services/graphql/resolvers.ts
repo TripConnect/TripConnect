@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
+import Trip from "../../database/models/trip";
 
 const resolvers = {
     Query: {
@@ -24,7 +25,14 @@ const resolvers = {
                 const isPasswordValid = await bcrypt.compare(password, userCredential.credential);
                 if (!isPasswordValid) throw new Error("Authorization failed");
 
-                let accessToken = jwt.sign({ username: user.username, password: userCredential.credential }, 'shhhhh');
+                let accessToken = jwt.sign(
+                    {
+                        user_id: user.user_id,
+                        username: user.username,
+                        credential: userCredential.credential,
+                    },
+                    process.env.SECRET_KEY || ""
+                );
 
                 return {
                     token: { user_id: user.user_id, access_token: accessToken }
@@ -63,6 +71,22 @@ const resolvers = {
                 return { user_id: null };
             }
         },
+
+        createTrip: async (
+            _: any,
+            { name, description }: { name: string, description: string },
+            { token }: { token: string }
+        ) => {
+            let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+
+            let trip = await Trip.create({
+                name,
+                description,
+                created_by: decoded.user_id,
+                created_at: new Date(),
+            })
+            return { trip_id: trip.id };
+        }
     },
 };
 

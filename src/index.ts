@@ -1,4 +1,5 @@
 const http = require('http');
+import 'dotenv/config'
 import express, { Request, Response } from 'express';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -36,8 +37,7 @@ gqlServer
                     token: req.headers.authorization?.split(" ")[1],
                 }
             }
-        }
-        )
+        })
     ));
 
 server.listen(PORT, () => {

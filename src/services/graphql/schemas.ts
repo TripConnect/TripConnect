@@ -8,6 +8,10 @@ const typeDefs = `
         access_token: String!
     }
 
+    type Trip {
+        trip_id: String!
+    }
+
     type AuthPayload {
         token: Token
     }
@@ -23,6 +27,7 @@ const typeDefs = `
     type Mutation {
         login(username: String!, password: String!): AuthPayload!
         register(username: String!, password: String!): User
+        createTrip(name: String!): Trip!
     }
 `;
 
