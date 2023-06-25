@@ -1,7 +1,8 @@
+import { readFileSync } from 'fs';
 import { ApolloServer } from '@apollo/server';
 
-import typeDefs from "./schemas";
 import resolvers from "./resolvers";
+const typeDefs = readFileSync(__dirname + '/schema.graphql', { encoding: 'utf-8' });
 
 interface CustomContext {
     token?: String;
