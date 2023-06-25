@@ -1,8 +1,8 @@
 import { DataTypes } from 'sequelize';
 
-const { sequelize } = require('./index');
+import db from '.';
 
-const User = sequelize.define('User', {
+const User = db.sequelize.define('User', {
     user_id: {
         type: DataTypes.STRING,
         allowNull: false

@@ -1,8 +1,8 @@
 import { DataTypes } from 'sequelize';
 
-const { sequelize } = require('./index');
+import db from '.';
 
-const UserCredential = sequelize.define('UserCredential', {
+const UserCredential = db.sequelize.define('UserCredential', {
     user_id: {
         type: DataTypes.STRING,
         allowNull: false

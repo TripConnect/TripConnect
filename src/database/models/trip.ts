@@ -1,8 +1,8 @@
 import { DataTypes } from 'sequelize';
 
-const { sequelize } = require('./index');
+import db from '.';
 
-const Trip = sequelize.define('Trip', {
+const Trip = db.sequelize.define('Trip', {
     name: {
         type: DataTypes.STRING,
         allowNull: false
