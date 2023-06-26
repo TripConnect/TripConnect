@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
 import Trip from "../../database/models/trip";
+import logger from "../../utils/logging";
 
 const resolvers = {
     Query: {
@@ -34,6 +35,7 @@ const resolvers = {
                     process.env.SECRET_KEY || ""
                 );
 
+                logger.info({ message: "Login success", user_id: user.user_id });
                 return {
                     token: { user_id: user.user_id, access_token: accessToken }
                 }
