@@ -29,7 +29,7 @@ module.exports = {
       .then(() => queryInterface.addConstraint('user_credential', {
         fields: ['user_id'],
         type: 'FOREIGN KEY',
-        name: 'FK_userId_user', // useful if using queryInterface.removeConstraint
+        name: 'FK_userCredential_userId', // useful if using queryInterface.removeConstraint
         references: {
           table: 'user',
           field: 'user_id',
