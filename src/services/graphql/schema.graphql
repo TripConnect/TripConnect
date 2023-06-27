@@ -8,7 +8,12 @@ type Token {
 }
 
 type Trip {
-    trip_id: String!
+    trip_id: ID!
+}
+
+type TripUser {
+    trip_id: Int!
+    user_id: String!
 }
 
 type AuthPayload {
@@ -27,4 +32,6 @@ type Mutation {
     login(username: String!, password: String!): AuthPayload!
     register(username: String!, password: String!): User
     createTrip(name: String!): Trip!
+    joinTrip(trip_id: ID!): TripUser!
+    loadTripMembers(trip_id: ID!): [TripUser]!
 }

@@ -1,11 +1,14 @@
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import { GraphQLError } from 'graphql';
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
 import Trip from "../../database/models/trip";
 import logger from "../../utils/logging";
+import TripUserList from "../../database/models/trip_user_list";
+import { log } from "winston";
 
 const resolvers = {
     Query: {
@@ -88,7 +91,53 @@ const resolvers = {
                 created_at: new Date(),
             })
             return { trip_id: trip.id };
-        }
+        },
+
+        joinTrip: async (
+            _: any,
+            { trip_id }: { trip_id: number },
+            { token }: { token: string }
+        ) => {
+            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+
+            if (!Trip.findOne({ where: { id: trip_id } })) {
+                throw new GraphQLError("Trip not found", {
+                    extensions: {
+                        code: 'NOT_FOUND',
+                    }
+                });
+            }
+            if (TripUserList.findOne({ where: { trip_id, user_id } })) {
+                throw new GraphQLError("User in trip already", {
+                    extensions: {
+                        code: 'BAD_REQUEST',
+                    }
+                });
+            }
+
+            let tripUser = await TripUserList.create({
+                trip_id,
+                user_id,
+            });
+            return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
+        },
+
+        loadTripMembers: async (
+            _: any,
+            { trip_id }: { trip_id: number },
+            { token }: { token: string }
+        ) => {
+            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+            if (!TripUserList.findOne({ where: { trip_id, user_id } })) {
+                throw new GraphQLError("Cannot get trip members", {
+                    extensions: {
+                        code: 'FORBIDDEN',
+                    }
+                });
+            }
+            let tripMembers = await TripUserList.findAll({ where: { trip_id } });
+            return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
+        },
     },
 };
 
