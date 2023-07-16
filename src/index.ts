@@ -14,7 +14,11 @@ import { Test, TripMemberLocation } from './services/socketio';
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+    }
+});
 const PORT = process.env.PORT || 3000;
 
 let accessLogStream = fs.createWriteStream(path.join(__dirname, 'log/access.log'), { flags: 'a' });

@@ -53,6 +53,6 @@ module.exports = {
       }));
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('trip_user_lists');
+    await queryInterface.dropTable('trip_user_list');
   }
 };
