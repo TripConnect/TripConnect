@@ -8,13 +8,35 @@ import UserCredential from "../../database/models/user_credential";
 import Trip from "../../database/models/trip";
 import logger from "../../utils/logging";
 import TripUserList from "../../database/models/trip_user_list";
-import { log } from "winston";
 
 const resolvers = {
     Query: {
         status: async () => {
             return { status: true };
-        }
+        },
+        loadUser: async (
+            _: any,
+            { user_id }: { user_id: string }
+        ) => {
+            let user = await User.findOne({ where: { user_id } });
+            return { user_id: user.user_id, display_name: user.display_name };
+        },
+        loadTripMembers: async (
+            _: any,
+            { trip_id }: { trip_id: number },
+            { token }: { token: string }
+        ) => {
+            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+            if (!TripUserList.findOne({ where: { trip_id, user_id } })) {
+                throw new GraphQLError("Cannot get trip members", {
+                    extensions: {
+                        code: 'FORBIDDEN',
+                    }
+                });
+            }
+            let tripMembers = await TripUserList.findAll({ where: { trip_id } });
+            return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
+        },
     },
     Mutation: {
         login: async (
@@ -120,23 +142,6 @@ const resolvers = {
                 user_id,
             });
             return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
-        },
-
-        loadTripMembers: async (
-            _: any,
-            { trip_id }: { trip_id: number },
-            { token }: { token: string }
-        ) => {
-            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-            if (!TripUserList.findOne({ where: { trip_id, user_id } })) {
-                throw new GraphQLError("Cannot get trip members", {
-                    extensions: {
-                        code: 'FORBIDDEN',
-                    }
-                });
-            }
-            let tripMembers = await TripUserList.findAll({ where: { trip_id } });
-            return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
         },
     },
 };

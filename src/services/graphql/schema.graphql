@@ -1,5 +1,6 @@
 type User {
-    user_id: ID
+    user_id: ID!
+    display_name: String
 }
 
 type Token {
@@ -26,6 +27,8 @@ type StatusPayload {
 
 type Query {
     status: StatusPayload
+    loadUser(user_id: String!): User!
+    loadTripMembers(trip_id: ID!): [TripUser]!
 }
 
 type Mutation {
@@ -33,5 +36,4 @@ type Mutation {
     register(username: String!, password: String!): User
     createTrip(name: String!): Trip!
     joinTrip(trip_id: ID!): TripUser!
-    loadTripMembers(trip_id: ID!): [TripUser]!
 }
