@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { GraphQLError } from 'graphql';
+import { Op } from "sequelize";
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
@@ -36,6 +37,18 @@ const resolvers = {
             }
             let tripMembers = await TripUserList.findAll({ where: { trip_id } });
             return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
+        },
+        searchUser: async (
+            _: any,
+            { display_name_pattern }: { display_name_pattern: number },
+            { token }: { token: string }
+        ) => {
+            let users = await User.findAll({
+                where: {
+                    display_name: { [Op.like]: `%${display_name_pattern}%` }
+                }
+            });
+            return users.map((user: { [key: string]: any; }) => ({ user_id: user.user_id, display_name: user.display_name }))
         },
     },
     Mutation: {
@@ -73,7 +86,7 @@ const resolvers = {
 
         register: async (
             _: any,
-            { username, password }: { username: string, password: string },
+            { username, password, display_name }: { username: string, password: string, display_name: string },
         ) => {
             try {
                 const salt = await bcrypt.genSalt(12);
@@ -84,6 +97,7 @@ const resolvers = {
                 let user = await User.create({
                     user_id,
                     username,
+                    display_name,
                     created_at: new Date(),
                     updated_at: new Date(),
                 });

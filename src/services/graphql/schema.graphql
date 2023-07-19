@@ -28,12 +28,13 @@ type StatusPayload {
 type Query {
     status: StatusPayload
     loadUser(user_id: String!): User!
+    searchUser(display_name_pattern: String!): [User]!
     loadTripMembers(trip_id: ID!): [TripUser]!
 }
 
 type Mutation {
     login(username: String!, password: String!): AuthPayload!
-    register(username: String!, password: String!): User
+    register(username: String!, password: String!, display_name: String!): User
     createTrip(name: String!): Trip!
     joinTrip(trip_id: ID!): TripUser!
 }
