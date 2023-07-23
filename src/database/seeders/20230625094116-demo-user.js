@@ -50,8 +50,8 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     return queryInterface.sequelize.transaction(t => {
       return Promise.all([
-        queryInterface.bulkDelete('user', { user_id: { [Op.in]: users.map(user => user.user_id) } }, {}),
-        queryInterface.bulkDelete('user_credential', { user_id: { [Op.in]: users.map(user => user.user_id) } }, {}),
+        // Related user_credential rows will be removed automatically by user_id constraint
+        queryInterface.bulkDelete('user', { username: { [Op.in]: users.map(user => user.username) } }, {}),
       ]);
     });
   }
