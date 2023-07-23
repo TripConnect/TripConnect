@@ -19,7 +19,7 @@ const resolvers = {
             _: any,
             { user_id }: { user_id: string }
         ) => {
-            let user = await User.findOne({ where: { user_id } });
+            let user = await User.findOne({ where: { user_id }, limit: 50 });
             return { user_id: user.user_id, display_name: user.display_name };
         },
         loadTripMembers: async (
