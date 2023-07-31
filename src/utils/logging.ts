@@ -2,7 +2,7 @@ import winston from 'winston';
 const path = require('path');
 
 const logger = winston.createLogger({
-    level: 'info',
+    level: 'debug',
     format: winston.format.json(),
     transports: [
         // write logs to the console

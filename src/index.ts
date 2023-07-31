@@ -10,7 +10,8 @@ import { expressMiddleware } from '@apollo/server/express4';
 import morgan from 'morgan';
 
 import gqlServer from './services/graphql';
-import { Test, TripMemberLocation } from './services/socketio';
+import { cacheSocketId, getSocketId } from './utils/cache';
+import logger from './utils/logging';
 
 const app = express();
 const server = http.createServer(app);
@@ -27,8 +28,18 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 io.on("connection", async (socket) => {
     console.info("connected");
 
-    socket.on(Test.TOPIC, (payload) => Test.handle(server, JSON.parse(payload)));
-    socket.on(TripMemberLocation.TOPIC, (payload) => TripMemberLocation.handle(server, JSON.parse(payload)));
+    socket.on("login", async (payload) => {
+        let { user_id } = payload;
+        logger.debug({ message: "User login", user_id, socketId: socket.id });
+        await cacheSocketId(user_id, socket.id);
+    });
+
+    socket.on("chat", async (payload) => {
+        let { to_user_id, message } = JSON.parse(payload);
+        let to_socket_id = await getSocketId(to_user_id);
+        logger.debug({ message: "Chat", chatMessage: message, to_user_id });
+        socket.to(to_socket_id).emit("chat", JSON.stringify({ message }));
+    });
 });
 
 app.get('/status', (req: Request, res: Response) => {

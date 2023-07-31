@@ -25,6 +25,12 @@ type StatusPayload {
     status: Boolean!
 }
 
+type ChatMessage {
+    from_user_id: String!
+    to_user_id: String!
+    message: String!
+}
+
 type Query {
     status: StatusPayload
     loadUser(user_id: String!): User!
