@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import winston from 'winston';
 const path = require('path');
 
 const logger = winston.createLogger({
-    level: 'debug',
+    level: process.env.ENVIRONMENT === "development" ? 'debug' : 'info',
     format: winston.format.json(),
     transports: [
         // write logs to the console
