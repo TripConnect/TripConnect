@@ -7,6 +7,7 @@ import { json } from 'body-parser';
 const fs = require('fs')
 const path = require('path');
 import { expressMiddleware } from '@apollo/server/express4';
+import jwt from 'jsonwebtoken';
 import morgan from 'morgan';
 
 import gqlServer from './services/graphql';
@@ -28,8 +29,11 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 io.on("connection", async (socket) => {
     console.info("connected");
 
-    socket.on("login", async (payload) => {
-        let { user_id } = payload;
+    socket.on("auth", async (payload) => {
+        let { token } = socket.handshake.auth;
+        let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+
+        let { user_id } = decoded;
         logger.debug({ message: "User login", user_id, socketId: socket.id });
         await cacheSocketId(user_id, socket.id);
     });
