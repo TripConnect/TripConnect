@@ -28,7 +28,7 @@ type StatusPayload {
 type ChatMessage {
     from_user_id: String!
     to_user_id: String!
-    message: String!
+    content: String!
 }
 
 type Query {
@@ -36,6 +36,7 @@ type Query {
     loadUser(user_id: String!): User!
     searchUser(display_name_pattern: String!): [User]!
     loadTripMembers(trip_id: ID!): [TripUser]!
+    latestChatMessage(otherUserId: String!, limit: Int): [ChatMessage]!
 }
 
 type Mutation {

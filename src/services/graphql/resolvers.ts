@@ -9,6 +9,7 @@ import UserCredential from "../../database/models/user_credential";
 import Trip from "../../database/models/trip";
 import logger from "../../utils/logging";
 import TripUserList from "../../database/models/trip_user_list";
+import Message from "../../database/models/message";
 
 const resolvers = {
     Query: {
@@ -49,6 +50,30 @@ const resolvers = {
                 }
             });
             return users.map((user: { [key: string]: any; }) => ({ user_id: user.user_id, display_name: user.display_name }))
+        },
+        latestChatMessage: async (
+            _: any,
+            { otherUserId, limit = 100 }: { otherUserId: string, limit: number },
+            { token }: { token: string }
+        ) => {
+            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+            let messages = await Message.findAll({
+                where: {
+                    [Op.or]: {
+                        [Op.and]: {
+                            from_user_id: user_id,
+                            to_user_id: otherUserId
+                        },
+                        [Op.and]: {
+                            from_user_id: otherUserId,
+                            to_user_id: user_id,
+                        }
+                    }
+                },
+                order: ["create_at", "DESC"],
+                limit: limit,
+            });
+            return messages.map((message: { [key: string]: any; }) => ({ from_user_id: message.from_user_id, content: message.content, to_user_id: message.to_user_id }));
         },
     },
     Mutation: {
