@@ -25,11 +25,11 @@ module.exports = {
         },
         from_user_id: {
           allowNull: false,
-          type: Sequelize.DATE
+          type: Sequelize.STRING
         },
         to_user_id: {
           allowNull: false,
-          type: Sequelize.DATE
+          type: Sequelize.STRING
         }
       },
       {

@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { GraphQLError } from 'graphql';
-import { Op } from "sequelize";
+import { QueryTypes, Op } from "sequelize";
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
@@ -10,6 +10,9 @@ import Trip from "../../database/models/trip";
 import logger from "../../utils/logging";
 import TripUserList from "../../database/models/trip_user_list";
 import Message from "../../database/models/message";
+import Conversation from "../../database/models/conversation";
+import db from "../../database/models";
+import UserConversationList from "../../database/models/user_conversation_list";
 
 const resolvers = {
     Query: {
@@ -51,30 +54,72 @@ const resolvers = {
             });
             return users.map((user: { [key: string]: any; }) => ({ user_id: user.user_id, display_name: user.display_name }))
         },
-        latestChatMessage: async (
+        // loadNearbyPrivateMessageUsers: async (
+        //     _: any,
+        //     { page = 1, limit = 10 }: { page: number, limit: number },
+        //     { token }: { token: string }
+        // ) => {
+        //     const nearByConversations = await db.sequelize.query(
+        //         `SELECT DISTICT user_id
+        //         FROM message
+        //         WHERE conversation_id IS NULL
+        //         ORDER BY created_at ${"DESC" ? page < 0 : "ASC"}
+        //         LIMIT ${limit}
+        //         OFFSET ${(Math.abs(page) - 1) * limit}`,
+        //         { type: QueryTypes.SELECT }
+        //     );
+        // },
+        loadConversations: async (
             _: any,
-            { otherUserId, limit = 100 }: { otherUserId: string, limit: number },
+            { page = 1, limit = 10 }: { page: number, limit: number },
             { token }: { token: string }
         ) => {
-            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-            let messages = await Message.findAll({
-                where: {
-                    [Op.or]: {
-                        [Op.and]: {
-                            from_user_id: user_id,
-                            to_user_id: otherUserId
-                        },
-                        [Op.and]: {
-                            from_user_id: otherUserId,
-                            to_user_id: user_id,
-                        }
-                    }
-                },
-                order: ["create_at", "DESC"],
-                limit: limit,
-            });
-            return messages.map((message: { [key: string]: any; }) => ({ from_user_id: message.from_user_id, content: message.content, to_user_id: message.to_user_id }));
+            const nearByConversations = await db.sequelize.query(
+                `SELECT DISTINCT conversation_id
+                FROM message
+                ORDER BY created_at
+                LIMIT ${limit}
+                OFFSET ${(page - 1) * limit}`,
+                { type: QueryTypes.SELECT }
+            );
+
+            let conversations: object[] = [];
+            for (let nearByConversation of nearByConversations) {
+                let messages = await Message.findAll({
+                    where: { conversation_id: nearByConversation.conversation_id },
+                    order: ["create_at", "DESC" ? page < 0 : "ASC"],
+                    limit: limit,
+                    offset: (Math.abs(page) - 1) * limit,
+                });
+                let conversation = await Conversation.findOne({ where: { conversation_id: nearByConversation.conversation_id } });
+                conversations.push({
+                    conversation_id: nearByConversation.conversation_id,
+                    name: conversation.name,
+                    messages,
+                })
+            }
+            return conversations;
         },
+        loadConversation: async (
+            _: any,
+            { conversation_id, page = -1, limit = 100 }: { conversation_id: number, page: number, limit: number },
+            { token }: { token: string }
+        ) => {
+            let messages = await Message.findAll({
+                where: { conversation_id },
+                order: ["create_at", "DESC" ? page < 0 : "ASC"],
+                limit: limit,
+                offset: (Math.abs(page) - 1) * limit,
+            });
+            return {
+                messages: messages
+                    .map(({ from_user_id, to_user_id, content }: { from_user_id: string, to_user_id: string, content: string }) => ({
+                        from_user_id,
+                        to_user_id,
+                        content
+                    }))
+            }
+        }
     },
     Mutation: {
         login: async (
@@ -181,6 +226,24 @@ const resolvers = {
                 user_id,
             });
             return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
+        },
+
+        createConversation: async (
+            _: any,
+            { name, user_ids }: { name: string, user_ids: string[] },
+            { token }: { token: string }
+        ) => {
+            let conversation = await Conversation.create({ name });
+            await Promise.all(user_ids.map(user_id => UserConversationList.create({
+                conversation_id: conversation.id,
+                user_id,
+                join_at: new Date(),
+            })));
+            return {
+                conversation_id: conversation.id,
+                name: conversation.name,
+                messages: [],
+            };
         },
     },
 };

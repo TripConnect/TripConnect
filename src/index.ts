@@ -13,6 +13,8 @@ import morgan from 'morgan';
 import gqlServer from './services/graphql';
 import { cacheSocketId, getSocketId } from './utils/cache';
 import logger from './utils/logging';
+import Message from './database/models/message';
+import User from './database/models/user';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,21 +30,28 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 
 io.on("connection", async (socket) => {
     console.info("connected");
+    console.info(socket.handshake.auth);
 
-    socket.on("auth", async (payload) => {
-        let { token } = socket.handshake.auth;
-        let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-
-        let { user_id } = decoded;
-        logger.debug({ message: "User login", user_id, socketId: socket.id });
-        await cacheSocketId(user_id, socket.id);
-    });
+    let { token } = socket.handshake.auth;
+    let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+    let user = await User.findOne({ where: { user_id } });
+    await cacheSocketId(user.user_id, socket.id);
 
     socket.on("chat", async (payload) => {
-        let { to_user_id, message } = JSON.parse(payload);
+        let { token } = socket.handshake.auth;
+        let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+        console.log({ payload });
+        let { to_user_id, content } = payload;
         let to_socket_id = await getSocketId(to_user_id);
-        logger.debug({ message: "Chat", chatMessage: message, to_user_id });
-        socket.to(to_socket_id).emit("chat", JSON.stringify({ message }));
+        await Message.create({
+            from_user_id: user_id,
+            to_user_id,
+            content,
+            created_at: new Date(),
+            state: 'sent',
+        });
+        logger.debug({ message: "Chat", chatMessage: content, to_user_id });
+        socket.to(to_socket_id).emit("chat", JSON.stringify({ from_user_id: user_id, content }));
     });
 });
 

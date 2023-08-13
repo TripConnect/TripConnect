@@ -31,12 +31,19 @@ type ChatMessage {
     content: String!
 }
 
+type Conversation {
+    conversation_id: ID!
+    name: String
+    messages: [ChatMessage]!
+}
+
 type Query {
     status: StatusPayload
     loadUser(user_id: String!): User!
     searchUser(display_name_pattern: String!): [User]!
     loadTripMembers(trip_id: ID!): [TripUser]!
-    latestChatMessage(otherUserId: String!, limit: Int): [ChatMessage]!
+    loadConversation(conversation_id: ID!, page: Int, limit: Int): Conversation!
+    loadConversations(page:Int, limit: Int): [Conversation]!
 }
 
 type Mutation {
@@ -44,4 +51,5 @@ type Mutation {
     register(username: String!, password: String!, display_name: String!): User
     createTrip(name: String!): Trip!
     joinTrip(trip_id: ID!): TripUser!
+    createConversation(name: String, user_ids: [String!]!): Conversation!
 }

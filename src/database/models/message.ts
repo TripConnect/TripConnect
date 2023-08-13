@@ -3,10 +3,6 @@ import { DataTypes } from 'sequelize';
 import db from '.';
 
 const Message = db.sequelize.define('Message', {
-  trip_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
   content: {
     type: DataTypes.STRING,
     allowNull: false
