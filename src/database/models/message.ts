@@ -23,8 +23,11 @@ const Message = db.sequelize.define('Message', {
   state: {
     type: DataTypes.ENUM,
     values: ['sent', 'seen', 'revoked'],
+  },
+  conversation_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   }
-
 }, {
   tableName: 'message',
   timestamps: false,

@@ -13,11 +13,13 @@ const UserConversationList = db.sequelize.define('UserConversationList', {
   },
   join_at: {
     type: DataTypes.DATE,
-    allowNull: false
+    defaultValue: DataTypes.NOW
   },
 }, {
   tableName: 'user_conversation_list',
   timestamps: false,
 });
+
+UserConversationList.removeAttribute('id');
 
 export default UserConversationList;

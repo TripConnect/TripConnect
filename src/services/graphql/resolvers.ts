@@ -91,7 +91,7 @@ const resolvers = {
                     limit: limit,
                     offset: (Math.abs(page) - 1) * limit,
                 });
-                let conversation = await Conversation.findOne({ where: { conversation_id: nearByConversation.conversation_id } });
+                let conversation = await Conversation.findOne({ where: { id: nearByConversation.conversation_id } });
                 conversations.push({
                     conversation_id: nearByConversation.conversation_id,
                     name: conversation.name,
@@ -230,15 +230,45 @@ const resolvers = {
 
         createConversation: async (
             _: any,
-            { name, user_ids }: { name: string, user_ids: string[] },
-            { token }: { token: string }
+            { name, user_ids, type }: { name: string, user_ids: string[], type: string },
+            { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
-            let conversation = await Conversation.create({ name });
-            await Promise.all(user_ids.map(user_id => UserConversationList.create({
-                conversation_id: conversation.id,
-                user_id,
-                join_at: new Date(),
-            })));
+            let conversation: any;
+            if (type === 'private') {
+                let conversations = await db.sequelize.query(
+                    `SELECT DISTINCT T1.conversation_id
+                    FROM user_conversation_list T1 JOIN user_conversation_list T2
+                    ON
+                        T1.conversation_id = T2.conversation_id
+                        AND T1.user_id = '${user_ids[0]}'
+                        AND T2.user_id = '${user_ids[1]}';`,
+                    { type: QueryTypes.SELECT }
+                );
+                if (conversations.length) {
+                    conversation = await Conversation.findOne({
+                        where: {
+                            id: conversations[0].conversation_id
+                        }
+                    })
+                } else {
+                    conversation = await Conversation.create({ name, type });
+                    for (let user_id of user_ids) {
+                        await UserConversationList.create({
+                            conversation_id: conversation.id,
+                            user_id,
+                        })
+                    }
+                }
+            } else {
+                conversation = await Conversation.create({ name, type });
+                for (let user_id of user_ids) {
+                    await UserConversationList.create({
+                        conversation_id: conversation.id,
+                        user_id,
+                    })
+                }
+            }
+
             return {
                 conversation_id: conversation.id,
                 name: conversation.name,

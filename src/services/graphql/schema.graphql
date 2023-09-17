@@ -33,7 +33,7 @@ type ChatMessage {
 
 type Conversation {
     conversation_id: ID!
-    name: String
+    name: StringLoadConversation
     messages: [ChatMessage]!
 }
 
@@ -51,5 +51,5 @@ type Mutation {
     register(username: String!, password: String!, display_name: String!): User
     createTrip(name: String!): Trip!
     joinTrip(trip_id: ID!): TripUser!
-    createConversation(name: String, user_ids: [String!]!): Conversation!
+    createConversation(name: String, user_ids: [String!]!, type: String!): Conversation!
 }
