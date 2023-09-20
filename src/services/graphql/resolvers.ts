@@ -87,7 +87,7 @@ const resolvers = {
             for (let nearByConversation of nearByConversations) {
                 let messages = await Message.findAll({
                     where: { conversation_id: nearByConversation.conversation_id },
-                    order: ["create_at", "DESC" ? page < 0 : "ASC"],
+                    order: ["created_at", "DESC" ? page < 0 : "ASC"],
                     limit: limit,
                     offset: (Math.abs(page) - 1) * limit,
                 });
@@ -105,13 +105,23 @@ const resolvers = {
             { conversation_id, page = -1, limit = 100 }: { conversation_id: number, page: number, limit: number },
             { token }: { token: string }
         ) => {
-            let messages = await Message.findAll({
+            console.log({
                 where: { conversation_id },
-                order: ["create_at", "DESC" ? page < 0 : "ASC"],
+                order: [["created_at", page < 0 ? "DESC" : "ASC"]],
                 limit: limit,
                 offset: (Math.abs(page) - 1) * limit,
             });
+
+            let messages = await Message.findAll({
+                where: { conversation_id },
+                order: [["created_at", page < 0 ? "DESC" : "ASC"]],
+                limit: limit,
+                offset: (Math.abs(page) - 1) * limit,
+            });
+            let conversation = await Conversation.findOne({ where: { id: conversation_id } });
             return {
+                conversation_id,
+                name: conversation.name,
                 messages: messages
                     .map(({ from_user_id, to_user_id, content }: { from_user_id: string, to_user_id: string, content: string }) => ({
                         from_user_id,

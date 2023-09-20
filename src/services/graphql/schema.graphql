@@ -33,7 +33,7 @@ type ChatMessage {
 
 type Conversation {
     conversation_id: ID!
-    name: StringLoadConversation
+    name: String
     messages: [ChatMessage]!
 }
 

@@ -32,7 +32,6 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 
 io.on("connection", async (socket) => {
     console.info("connected");
-    console.info(socket.handshake.auth);
 
     let { token } = socket.handshake.auth;
     if (!token) {
@@ -64,7 +63,6 @@ io.on("connection", async (socket) => {
             created_at: new Date(),
             state: 'sent',
         });
-        logger.debug({ message: "Chat", chatMessage: content, to_user_id });
         socket.to(to_socket_id).emit("chat", JSON.stringify({ from_user_id: user_id, content }));
     });
 });
