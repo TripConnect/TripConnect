@@ -32,7 +32,6 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 
 io.on("connection", async (socket) => {
     console.info("connected");
-
     let { token } = socket.handshake.auth;
     if (!token) {
         socket.disconnect(true);
@@ -43,27 +42,20 @@ io.on("connection", async (socket) => {
     await cacheSocketId(user.user_id, socket.id);
 
     socket.on("chat", async (payload) => {
+        console.debug({ "topic": "chat", payload })
         let { token } = socket.handshake.auth;
         let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-        let { to_user_id, content } = payload;
-        let to_socket_id = await getSocketId(to_user_id);
-        let conversation = await Conversation.findOne({
-            where: {
-                [Op.and]: [{ type: "private" }, { from_user_id: user_id }]
-            }
-        })
-        if (!conversation) {
-            conversation = await Conversation.create({ type: "private" });
-        }
+        let { toUserId, content, conversationId } = payload;
+        let to_socket_id = await getSocketId(toUserId);
         await Message.create({
-            conversation_id: conversation.id,
+            conversation_id: conversationId,
             from_user_id: user_id,
-            to_user_id,
+            to_user_id: toUserId,
             content,
             created_at: new Date(),
             state: 'sent',
         });
-        socket.to(to_socket_id).emit("chat", JSON.stringify({ from_user_id: user_id, content }));
+        socket.to(to_socket_id).emit("chat", JSON.stringify({ fromUserId: user_id, toUserId: toUserId, content }));
     });
 });
 

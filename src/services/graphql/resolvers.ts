@@ -122,12 +122,7 @@ const resolvers = {
             return {
                 conversation_id,
                 name: conversation.name,
-                messages: messages
-                    .map(({ from_user_id, to_user_id, content }: { from_user_id: string, to_user_id: string, content: string }) => ({
-                        from_user_id,
-                        to_user_id,
-                        content
-                    }))
+                messages,
             }
         }
     },
