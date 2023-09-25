@@ -43,18 +43,24 @@ io.on("connection", async (socket) => {
 
     socket.on("chat", async (payload) => {
         console.debug({ "topic": "chat", payload })
+        const SIMULATION_USER_IDS = ["fddb3428-9c04-45b3-9455-dbd7650bb8ba"];
+
         let { token } = socket.handshake.auth;
         let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
         let { toUserId, content, conversationId } = payload;
         let to_socket_id = await getSocketId(toUserId);
-        await Message.create({
-            conversation_id: conversationId,
-            from_user_id: user_id,
-            to_user_id: toUserId,
-            content,
-            created_at: new Date(),
-            state: 'sent',
-        });
+
+        if (!SIMULATION_USER_IDS.find(user_id_item => user_id_item === user_id)) {
+            await Message.create({
+                conversation_id: conversationId,
+                from_user_id: user_id,
+                to_user_id: toUserId,
+                content,
+                created_at: new Date(),
+                state: 'sent',
+            });
+        }
+
         socket.to(to_socket_id).emit("chat", JSON.stringify({ fromUserId: user_id, toUserId: toUserId, content }));
     });
 });

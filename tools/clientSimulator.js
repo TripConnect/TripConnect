@@ -4,12 +4,6 @@ require('dotenv').config()
 
 const PORT = process.env.PORT || 3000
 
-function sleep(ms) {
-    var start = new Date().getTime(), expire = start + ms;
-    while (new Date().getTime() < expire) { }
-    return;
-}
-
 
 const socket = io(`ws://127.0.0.1:${PORT}`, {
     reconnectionDelayMax: 10000,
@@ -24,11 +18,10 @@ socket.on("connect", () => { console.log("connected"); });
 socket.on("ping", () => { console.log("ping"); });
 socket.on("disconnect", () => { console.log("disconnect"); });
 
-for (let i = 1; i <= 3; i++) {
+setInterval(() => {
     socket.emit("chat", {
         toUserId: "63b51031-7efe-4874-a13c-f9cd314e453f",
         content: "Em yeu em!",
         conversationId: 1
     });
-    sleep(1000);
-}
+}, 1000);
