@@ -15,8 +15,7 @@ import { cacheSocketId, getSocketId } from './utils/cache';
 import logger from './utils/logging';
 import Message from './database/models/message';
 import User from './database/models/user';
-import Conversation from './database/models/conversation';
-import { Op } from 'sequelize';
+
 
 const app = express();
 const server = http.createServer(app);
@@ -39,7 +38,7 @@ io.on("connection", async (socket) => {
     }
     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
     let user = await User.findOne({ where: { user_id } });
-    await cacheSocketId(user.user_id, socket.id);
+    cacheSocketId(user.user_id, socket.id);
 
     socket.on("chat", async (payload) => {
         console.debug({ "topic": "chat", payload })
@@ -48,20 +47,26 @@ io.on("connection", async (socket) => {
         let { token } = socket.handshake.auth;
         let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
         let { toUserId, content, conversationId } = payload;
-        let to_socket_id = await getSocketId(toUserId);
+        getSocketId(toUserId, async (error: any, socketId: string) => {
+            console.log({ socketId });
 
-        if (!SIMULATION_USER_IDS.find(user_id_item => user_id_item === user_id)) {
-            await Message.create({
-                conversation_id: conversationId,
-                from_user_id: user_id,
-                to_user_id: toUserId,
-                content,
-                created_at: new Date(),
-                state: 'sent',
+            if (!SIMULATION_USER_IDS.find(user_id_item => user_id_item === user_id)) {
+                await Message.create({
+                    conversation_id: conversationId,
+                    from_user_id: user_id,
+                    to_user_id: toUserId,
+                    content,
+                    created_at: new Date(),
+                    state: 'sent',
+                });
+            }
+
+            io.to(socketId).emit("chat", {
+                conversationId,
+                fromUserId: user_id,
+                toUserId: toUserId, content,
             });
-        }
-
-        socket.to(to_socket_id).emit("chat", JSON.stringify({ fromUserId: user_id, toUserId: toUserId, content }));
+        });
     });
 });
 

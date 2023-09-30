@@ -18,10 +18,13 @@ socket.on("connect", () => { console.log("connected"); });
 socket.on("ping", () => { console.log("ping"); });
 socket.on("disconnect", () => { console.log("disconnect"); });
 
+let count = 0;
+
 setInterval(() => {
+    count++;
     socket.emit("chat", {
         toUserId: "63b51031-7efe-4874-a13c-f9cd314e453f",
-        content: "Em yeu em!",
+        content: `Em yeu em ${count}!`,
         conversationId: 1
     });
 }, 1000);
