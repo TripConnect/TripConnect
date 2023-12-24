@@ -35,7 +35,7 @@ type Conversation {
     name: String
     members: [User!]!
     messages(page: Int, limit: Int): [Message!]!
-    type: ConversationType!
+    type: String! # ConversationType
     createdBy: ConversationCreator!
     createdAt: DateTime!
     lastMessageAt: DateTime
@@ -61,5 +61,5 @@ type Query {
 type Mutation {
     login(username: String!, password: String!): User!
     signup(username: String!, password: String!, displayName: String!): User!
-    createConversation(name: String, type: ConversationType!, members: [String!]!): Conversation!
+    createConversation(name: String, type: String!, members: String!): Conversation!
 }

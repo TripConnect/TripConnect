@@ -15,6 +15,8 @@ import { cacheSocketId, getSocketId } from './utils/cache';
 import logger from './utils/logging';
 import Message from './database/models/message';
 import User from './database/models/user';
+import { connect } from "mongoose";
+import Conversations from './mongo/models/conversations';
 
 
 const app = express();
@@ -77,6 +79,7 @@ app.get('/status', (req: Request, res: Response) => {
 
 gqlServer
     .start()
+    .then(() => connect(process.env.MONGODB_CONNECTION_STRING as string))
     .then(() => app.use(
         '/graphql',
         cors<cors.CorsRequest>(),

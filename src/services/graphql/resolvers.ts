@@ -12,8 +12,8 @@ import TripUserList from "../../database/models/trip_user_list";
 import Message from "../../database/models/message";
 import Conversation from "../../database/models/conversation";
 import db from "../../database/models";
-import UserConversationList from "../../database/models/user_conversation_list";
 import { log } from "winston";
+import Conversations from "../../mongo/models/conversations";
 
 const resolvers = {
     Query: {
@@ -268,50 +268,49 @@ const resolvers = {
 
         createConversation: async (
             _: any,
-            { name, members, type }: { name: string, members: string[], type: string },
+            { name, members, type }: { name: string, members: string, type: string },
             { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
-            let conversation: any;
-            if (type === 'private') {
-                let conversations = await db.sequelize.query(
-                    `SELECT DISTINCT T1.conversation_id
-                    FROM user_conversation_list T1 JOIN user_conversation_list T2
-                    ON
-                        T1.conversation_id = T2.conversation_id
-                        AND T1.user_id = '${members[0]}'
-                        AND T2.user_id = '${members[1]}';`,
-                    { type: QueryTypes.SELECT }
-                );
-                if (conversations.length) {
-                    conversation = await Conversation.findOne({
-                        where: {
-                            id: conversations[0].conversation_id
+            switch (type) {
+                case "PRIVATE":
+                    console.log({ members });
+                    let existConversation = await Conversations.findOne({
+                        type: "PRIVATE",
+                        members: { $all: members.split(",") }
+                    });
+                    if (existConversation) {
+                        return {
+                            id: existConversation.conversationId,
+                            name: existConversation.name,
+                            members: existConversation.members,
+                            messages: [],
+                            type: existConversation.type,
+                            createdBy: existConversation.createdBy,
+                            createdAt: existConversation.createdAt,
+                            lastMessageAt: existConversation.lastMessageAt,
                         }
-                    })
-                } else {
-                    conversation = await Conversation.create({ name, type });
-                    for (let user_id of members) {
-                        await UserConversationList.create({
-                            conversation_id: conversation.id,
-                            user_id,
-                        })
                     }
-                }
-            } else {
-                conversation = await Conversation.create({ name, type });
-                for (let user_id of members) {
-                    await UserConversationList.create({
-                        conversation_id: conversation.id,
-                        user_id,
-                    })
-                }
-            }
 
-            return {
-                conversation_id: conversation.id,
-                name: conversation.name,
-                messages: [],
-            };
+                    let conversation = await new Conversations({
+                        conversationId: uuidv4(),
+                        name: null,
+                        type,
+                        members: members.split(","),
+                        createdBy: currentUserId,
+                        lastMessageAt: null,
+                    }).save();
+
+                    return {
+                        id: conversation.conversationId,
+                        name: conversation.baseModelName,
+                        members: conversation.members,
+                        messages: [],
+                        type: conversation.type,
+                        createdBy: conversation.createdBy,
+                        createdAt: conversation.createdAt,
+                        lastMessageAt: conversation.lastMessageAt,
+                    }
+            }
         },
     },
 };
