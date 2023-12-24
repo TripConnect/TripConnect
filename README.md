@@ -1,17 +1,8 @@
-# Tech stack
-## Redis
-```bash
-docker pull redis
-docker run -p 6379:6379 -it redis:latest
+# Local setup
+```sh
+# create k8s resources
+kubectl apply -f tools/k8s/development-setup.yml
+
+# access mysql shell
+mysql -u service -p
 ```
-
-## Date transfer
-GraphQL
-
-## Chatting
-SocketIO
-
-# Feature
-## Authorization
-## Create trip
-## Trip Invitation

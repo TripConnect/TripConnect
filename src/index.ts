@@ -24,7 +24,7 @@ const io = new Server(server, {
         origin: "*",
     }
 });
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3107;
 
 let accessLogStream = fs.createWriteStream(path.join(__dirname, 'log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
@@ -34,6 +34,7 @@ io.on("connection", async (socket) => {
     let { token } = socket.handshake.auth;
     if (!token) {
         socket.disconnect(true);
+        logger.warn({ "message": "Reject socketio connection" })
         return;
     }
     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };

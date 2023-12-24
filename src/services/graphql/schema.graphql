@@ -1,55 +1,65 @@
-type User {
-    user_id: ID!
-    display_name: String
-}
+scalar DateTime
 
-type Token {
-    user_id: ID!
-    access_token: String!
-}
-
-type Trip {
-    trip_id: ID!
-}
-
-type TripUser {
-    trip_id: Int!
-    user_id: String!
-}
-
-type AuthPayload {
-    token: Token
-}
-
-type StatusPayload {
+type HealthCheckStatus {
     status: Boolean!
 }
 
-type ChatMessage {
-    from_user_id: String!
-    to_user_id: String!
-    content: String!
+type Token {
+    accessToken: String!
+    refreshToken: String!
 }
+
+type User {
+    id: ID!
+    username: String!
+    displayName: String!
+    token: Token
+}
+
+type Trip {
+    id: ID!
+    name: String!
+    members: [User!]!
+}
+
+enum ConversationType {
+  PRIVATE
+  GROUP
+  TRIP
+}
+
+union ConversationCreator = User | Trip
 
 type Conversation {
-    conversation_id: ID!
+    id: ID!
     name: String
-    messages: [ChatMessage]!
+    members: [User!]!
+    messages(page: Int, limit: Int): [Message!]!
+    type: ConversationType!
+    createdBy: ConversationCreator!
+    createdAt: DateTime!
+    lastMessageAt: DateTime
 }
 
+type Message {
+    id: ID!
+    conversation: Conversation!
+    fromUser: User!
+    messageContent: String!
+    createdAt: DateTime!
+}
+
+
 type Query {
-    status: StatusPayload
-    loadUser(user_id: String!): User!
-    searchUser(display_name_pattern: String!): [User]!
-    loadTripMembers(trip_id: ID!): [TripUser]!
-    loadConversation(conversation_id: ID!, page: Int, limit: Int): Conversation!
-    loadConversations(page:Int, limit: Int): [Conversation]!
+    status: HealthCheckStatus!
+    user(user_id: String!): User!
+    users(searchTerm: String!): [User!]!
+    conversation(conversationId: ID!): Conversation!
+    conversations(page: Int, limit: Int): [Conversation!]!
 }
 
 type Mutation {
-    login(username: String!, password: String!): AuthPayload!
-    register(username: String!, password: String!, display_name: String!): User
-    createTrip(name: String!): Trip!
-    joinTrip(trip_id: ID!): TripUser!
-    createConversation(name: String, user_ids: [String!]!, type: String!): Conversation!
+    login(username: String!, password: String!): User!
+    signup(username: String!, password: String!, displayName: String!): User!
+    createConversation(name: String, type: ConversationType!, members: [String!]!): Conversation!
 }

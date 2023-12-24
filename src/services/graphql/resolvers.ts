@@ -13,63 +13,71 @@ import Message from "../../database/models/message";
 import Conversation from "../../database/models/conversation";
 import db from "../../database/models";
 import UserConversationList from "../../database/models/user_conversation_list";
+import { log } from "winston";
 
 const resolvers = {
     Query: {
         status: async () => {
             return { status: true };
         },
-        loadUser: async (
+        user: async (
             _: any,
             { user_id }: { user_id: string }
         ) => {
             let user = await User.findOne({ where: { user_id }, limit: 50 });
-            return { user_id: user.user_id, display_name: user.display_name };
+            if (!user) throw new Error("User not found");
+            let userCredential = await UserCredential.findOne({ where: { user_id: user.user_id } });
+            let accessToken = jwt.sign(
+                {
+                    user_id: user.user_id,
+                    username: user.username,
+                    credential: userCredential.credential,
+                },
+                process.env.SECRET_KEY || ""
+            );
+            return {
+                id: user.user_id,
+                username: user.username,
+                displayName: user.display_name,
+                token: {
+                    accessToken,
+                },
+            };
         },
-        loadTripMembers: async (
+        // loadTripMembers: async (
+        //     _: any,
+        //     { trip_id }: { trip_id: number },
+        //     { token }: { token: string }
+        // ) => {
+        //     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+        //     if (!TripUserList.findOne({ where: { trip_id, user_id } })) {
+        //         throw new GraphQLError("Cannot get trip members", {
+        //             extensions: {
+        //                 code: 'FORBIDDEN',
+        //             }
+        //         });
+        //     }
+        //     let tripMembers = await TripUserList.findAll({ where: { trip_id } });
+        //     return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
+        // },
+        users: async (
             _: any,
-            { trip_id }: { trip_id: number },
-            { token }: { token: string }
-        ) => {
-            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-            if (!TripUserList.findOne({ where: { trip_id, user_id } })) {
-                throw new GraphQLError("Cannot get trip members", {
-                    extensions: {
-                        code: 'FORBIDDEN',
-                    }
-                });
-            }
-            let tripMembers = await TripUserList.findAll({ where: { trip_id } });
-            return tripMembers.map((member: { [key: string]: any; }) => ({ trip_id: member.trip_id, user_id: member.user_id }));
-        },
-        searchUser: async (
-            _: any,
-            { display_name_pattern }: { display_name_pattern: number },
+            { searchTerm }: { searchTerm: number },
             { token }: { token: string }
         ) => {
             let users = await User.findAll({
                 where: {
-                    display_name: { [Op.like]: `%${display_name_pattern}%` }
+                    display_name: { [Op.like]: `%${searchTerm}%` }
                 }
             });
-            return users.map((user: { [key: string]: any; }) => ({ user_id: user.user_id, display_name: user.display_name }))
+            return users.map((user: { [key: string]: any; }) => ({
+                id: user.user_id,
+                username: user.username,
+                displayName: user.display_name,
+                token: null,
+            }))
         },
-        // loadNearbyPrivateMessageUsers: async (
-        //     _: any,
-        //     { page = 1, limit = 10 }: { page: number, limit: number },
-        //     { token }: { token: string }
-        // ) => {
-        //     const nearByConversations = await db.sequelize.query(
-        //         `SELECT DISTICT user_id
-        //         FROM message
-        //         WHERE conversation_id IS NULL
-        //         ORDER BY created_at ${"DESC" ? page < 0 : "ASC"}
-        //         LIMIT ${limit}
-        //         OFFSET ${(Math.abs(page) - 1) * limit}`,
-        //         { type: QueryTypes.SELECT }
-        //     );
-        // },
-        loadConversations: async (
+        conversations: async (
             _: any,
             { page = 1, limit = 10 }: { page: number, limit: number },
             { token }: { token: string }
@@ -100,7 +108,7 @@ const resolvers = {
             }
             return conversations;
         },
-        loadConversation: async (
+        conversation: async (
             _: any,
             { conversation_id, page = -1, limit = 100 }: { conversation_id: number, page: number, limit: number },
             { token }: { token: string }
@@ -133,7 +141,11 @@ const resolvers = {
         ) => {
             try {
                 let user = await User.findOne({ where: { username } });
-                if (!user) throw new Error("User not found");
+                if (!user) throw new GraphQLError("User not found", {
+                    extensions: {
+                        code: 'NOT_FOUND',
+                    }
+                });
 
                 let userCredential = await UserCredential.findOne({ where: { user_id: user.user_id } });
                 const isPasswordValid = await bcrypt.compare(password, userCredential.credential);
@@ -150,7 +162,13 @@ const resolvers = {
 
                 logger.info({ message: "Login success", user_id: user.user_id });
                 return {
-                    token: { user_id: user.user_id, access_token: accessToken }
+                    id: user.user_id,
+                    username: user.username,
+                    displayName: user.display_name,
+                    token: {
+                        accessToken,
+                        refreshToken: "",
+                    },
                 }
             } catch (error) {
                 console.log(error);
@@ -159,7 +177,7 @@ const resolvers = {
             }
         },
 
-        register: async (
+        signup: async (
             _: any,
             { username, password, display_name }: { username: string, password: string, display_name: string },
         ) => {
@@ -176,66 +194,81 @@ const resolvers = {
                     created_at: new Date(),
                     updated_at: new Date(),
                 });
-
-                await UserCredential.create({
+                let userCredential = await UserCredential.create({
                     user_id: user.user_id,
                     credential: hashedPassword,
                 });
 
-                return { user_id: user.user_id };
+                let accessToken = jwt.sign(
+                    {
+                        user_id: user.user_id,
+                        username: user.username,
+                        credential: userCredential.credential,
+                    },
+                    process.env.SECRET_KEY || ""
+                );
+
+                return {
+                    id: user.user_id,
+                    username: user.username,
+                    displayName: user.display_name,
+                    token: {
+                        accessToken,
+                    },
+                };
             } catch (error) {
-                return { user_id: null };
+                throw new Error("Login incorrect");
             }
         },
 
-        createTrip: async (
-            _: any,
-            { name, description }: { name: string, description: string },
-            { token }: { token: string }
-        ) => {
-            let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+        // createTrip: async (
+        //     _: any,
+        //     { name, description }: { name: string, description: string },
+        //     { token }: { token: string }
+        // ) => {
+        //     let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
 
-            let trip = await Trip.create({
-                name,
-                description,
-                created_by: decoded.user_id,
-                created_at: new Date(),
-            })
-            return { trip_id: trip.id };
-        },
+        //     let trip = await Trip.create({
+        //         name,
+        //         description,
+        //         created_by: decoded.user_id,
+        //         created_at: new Date(),
+        //     })
+        //     return { trip_id: trip.id };
+        // },
 
-        joinTrip: async (
-            _: any,
-            { trip_id }: { trip_id: number },
-            { token }: { token: string }
-        ) => {
-            let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
+        // joinTrip: async (
+        //     _: any,
+        //     { trip_id }: { trip_id: number },
+        //     { token }: { token: string }
+        // ) => {
+        //     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
 
-            if (!Trip.findOne({ where: { id: trip_id } })) {
-                throw new GraphQLError("Trip not found", {
-                    extensions: {
-                        code: 'NOT_FOUND',
-                    }
-                });
-            }
-            if (TripUserList.findOne({ where: { trip_id, user_id } })) {
-                throw new GraphQLError("User in trip already", {
-                    extensions: {
-                        code: 'BAD_REQUEST',
-                    }
-                });
-            }
+        //     if (!Trip.findOne({ where: { id: trip_id } })) {
+        //         throw new GraphQLError("Trip not found", {
+        //             extensions: {
+        //                 code: 'NOT_FOUND',
+        //             }
+        //         });
+        //     }
+        //     if (TripUserList.findOne({ where: { trip_id, user_id } })) {
+        //         throw new GraphQLError("User in trip already", {
+        //             extensions: {
+        //                 code: 'BAD_REQUEST',
+        //             }
+        //         });
+        //     }
 
-            let tripUser = await TripUserList.create({
-                trip_id,
-                user_id,
-            });
-            return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
-        },
+        //     let tripUser = await TripUserList.create({
+        //         trip_id,
+        //         user_id,
+        //     });
+        //     return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
+        // },
 
         createConversation: async (
             _: any,
-            { name, user_ids, type }: { name: string, user_ids: string[], type: string },
+            { name, members, type }: { name: string, members: string[], type: string },
             { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
             let conversation: any;
@@ -245,8 +278,8 @@ const resolvers = {
                     FROM user_conversation_list T1 JOIN user_conversation_list T2
                     ON
                         T1.conversation_id = T2.conversation_id
-                        AND T1.user_id = '${user_ids[0]}'
-                        AND T2.user_id = '${user_ids[1]}';`,
+                        AND T1.user_id = '${members[0]}'
+                        AND T2.user_id = '${members[1]}';`,
                     { type: QueryTypes.SELECT }
                 );
                 if (conversations.length) {
@@ -257,7 +290,7 @@ const resolvers = {
                     })
                 } else {
                     conversation = await Conversation.create({ name, type });
-                    for (let user_id of user_ids) {
+                    for (let user_id of members) {
                         await UserConversationList.create({
                             conversation_id: conversation.id,
                             user_id,
@@ -266,7 +299,7 @@ const resolvers = {
                 }
             } else {
                 conversation = await Conversation.create({ name, type });
-                for (let user_id of user_ids) {
+                for (let user_id of members) {
                     await UserConversationList.create({
                         conversation_id: conversation.id,
                         user_id,
