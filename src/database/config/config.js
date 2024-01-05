@@ -1,9 +1,11 @@
-{
+require('dotenv').config()
+
+module.exports = {
     "development": {
-        "username": "root",
-        "password": "",
-        "database": "TripConnect",
-        "host": "127.0.0.1",
+        "username": process.env.DATEBASE_USERNAME,
+        "password": process.env.DATEBASE_PASSWORD,
+        "database": process.env.DATEBASE_NAME,
+        "host": process.env.DATEBASE_ADDRESS,
         "dialect": "mysql"
     },
     "test": {
