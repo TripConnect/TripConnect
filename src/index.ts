@@ -13,10 +13,10 @@ import morgan from 'morgan';
 import gqlServer from './services/graphql';
 import { cacheSocketId, getSocketId } from './utils/cache';
 import logger from './utils/logging';
-import Message from './database/models/message';
 import User from './database/models/user';
 import { connect } from "mongoose";
 import Conversations from './mongo/models/conversations';
+import Messages from './mongo/models/messages';
 
 
 const app = express();
@@ -26,12 +26,13 @@ const io = new Server(server, {
         origin: "*",
     }
 });
+const chatNamespace = io.of('/chat');
 const PORT = process.env.PORT || 3107;
 
 let accessLogStream = fs.createWriteStream(path.join(__dirname, 'log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
 
-io.on("connection", async (socket) => {
+chatNamespace.on("connection", async (socket) => {
     console.info("connected");
     let { token } = socket.handshake.auth;
     if (!token) {
@@ -40,35 +41,31 @@ io.on("connection", async (socket) => {
         return;
     }
     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-    let user = await User.findOne({ where: { user_id } });
-    cacheSocketId(user.user_id, socket.id);
+    socket.data.userId = user_id;
 
-    socket.on("chat", async (payload) => {
-        console.debug({ "topic": "chat", payload })
-        const SIMULATION_USER_IDS = ["fddb3428-9c04-45b3-9455-dbd7650bb8ba"];
-
-        let { token } = socket.handshake.auth;
-        let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-        let { toUserId, content, conversationId } = payload;
-        getSocketId(toUserId, async (error: any, socketId: string) => {
-            console.log({ socketId });
-
-            if (!SIMULATION_USER_IDS.find(user_id_item => user_id_item === user_id)) {
-                await Message.create({
-                    conversation_id: conversationId,
-                    from_user_id: user_id,
-                    to_user_id: toUserId,
-                    content,
-                    created_at: new Date(),
-                    state: 'sent',
-                });
+    let userConversations = await Conversations.find({
+        "members": {
+            $elemMatch: {
+                $eq: socket.data.userId
             }
+        }
+    });
+    for (let conversation of userConversations) {
+        // socket.join(conversation.conversationId);
+        console.log(conversation.conversationId);
+    }
 
-            io.to(socketId).emit("chat", {
-                conversationId,
-                fromUserId: user_id,
-                toUserId: toUserId, content,
-            });
+    socket.on("message", async ({ conversationId, messageContent }) => {
+        let message = await Messages.create({
+            fromUserId: socket.data.userId,
+            conversationId,
+            messageContent,
+        });
+        socket.to(conversationId).emit("message", {
+            userId: socket.data.userId,
+            messageContent,
+            conversationId,
+            createdAt: message.createdAt,
         });
     });
 });

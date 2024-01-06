@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define a TypeScript interface for the User document
 interface IMessages extends Document {
@@ -10,7 +11,11 @@ interface IMessages extends Document {
 }
 
 const MessagesSchema = new Schema<IMessages>({
-    messageId: String,
+    messageId: {
+        type: String,
+        default: uuidv4,
+        unique: true,
+    },
     conversationId: String,
     fromUserId: String,
     messageContent: String,

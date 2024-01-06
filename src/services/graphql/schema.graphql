@@ -52,9 +52,9 @@ type Message {
 
 type Query {
     status: HealthCheckStatus!
-    user(user_id: String!): User!
+    user(id: String!): User!
     users(searchTerm: String!): [User!]!
-    conversation(conversationId: ID!): Conversation!
+    conversation(id: String!): Conversation!
     conversations(page: Int, limit: Int): [Conversation!]!
 }
 

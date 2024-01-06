@@ -12,8 +12,8 @@ import TripUserList from "../../database/models/trip_user_list";
 import Message from "../../database/models/message";
 import Conversation from "../../database/models/conversation";
 import db from "../../database/models";
-import { log } from "winston";
 import Conversations from "../../mongo/models/conversations";
+import Messages from "../../mongo/models/messages";
 
 const resolvers = {
     Query: {
@@ -82,55 +82,69 @@ const resolvers = {
             { page = 1, limit = 10 }: { page: number, limit: number },
             { token }: { token: string }
         ) => {
-            const nearByConversations = await db.sequelize.query(
-                `SELECT DISTINCT conversation_id
-                FROM message
-                ORDER BY created_at
-                LIMIT ${limit}
-                OFFSET ${(page - 1) * limit}`,
-                { type: QueryTypes.SELECT }
-            );
+            let result: any = [];
+            let conversations = await Conversations
+                .find()
+                .skip(limit * (Math.abs(page) - 1))
+                .limit(limit)
+                .exec();
+            for (let conversation of conversations) {
+                let messages = await Messages
+                    .find({ conversationId: conversation.conversationId })
+                    .sort({ createdAt: -1 })
+                    .skip(limit * (Math.abs(page) - 1))
+                    .limit(limit)
+                    .exec();
 
-            let conversations: object[] = [];
-            for (let nearByConversation of nearByConversations) {
-                let messages = await Message.findAll({
-                    where: { conversation_id: nearByConversation.conversation_id },
-                    order: ["created_at", "DESC" ? page < 0 : "ASC"],
-                    limit: limit,
-                    offset: (Math.abs(page) - 1) * limit,
+                let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { user_id: userId } })));
+                result.push({
+                    id: conversation.conversationId,
+                    name: conversation?.name,
+                    type: conversation?.type,
+                    createdBy: null,
+                    createdAt: conversation?.createdAt,
+                    lastMessageAt: null,
+                    members: members.map(({ user_id, display_name }) => ({ id: user_id, displayName: display_name })),
+                    messages: messages.map(({ messageId, fromUserId, messageContent, createdAt }) => {
+                        let fromUser = { id: fromUserId }
+                        return { id: messageId, messageContent, createdAt, fromUser }
+                    }),
                 });
-                let conversation = await Conversation.findOne({ where: { id: nearByConversation.conversation_id } });
-                conversations.push({
-                    conversation_id: nearByConversation.conversation_id,
-                    name: conversation.name,
-                    messages,
-                })
             }
-            return conversations;
+            return result;
         },
         conversation: async (
             _: any,
-            { conversation_id, page = -1, limit = 100 }: { conversation_id: number, page: number, limit: number },
+            { id, page = -1, limit = 100 }: { id: string, page: number, limit: number },
             { token }: { token: string }
         ) => {
-            console.log({
-                where: { conversation_id },
-                order: [["created_at", page < 0 ? "DESC" : "ASC"]],
-                limit: limit,
-                offset: (Math.abs(page) - 1) * limit,
-            });
+            let conversation = await Conversations.findOne({ conversationId: id });
+            if (!conversation) {
+                throw new GraphQLError("Conversation not found", {
+                    extensions: { code: 'NOT_FOUND' }
+                });
+            }
+            console.log({ id });
+            let messages = await Messages
+                .find({ conversationId: id })
+                .sort({ createdAt: page < 0 ? -1 : 1 })
+                .skip(limit * (Math.abs(page) - 1))
+                .limit(limit)
+                .exec();
 
-            let messages = await Message.findAll({
-                where: { conversation_id },
-                order: [["created_at", page < 0 ? "DESC" : "ASC"]],
-                limit: limit,
-                offset: (Math.abs(page) - 1) * limit,
-            });
-            let conversation = await Conversation.findOne({ where: { id: conversation_id } });
+            let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { user_id: userId } })));
             return {
-                conversation_id,
-                name: conversation.name,
-                messages,
+                id,
+                name: conversation?.name,
+                type: conversation?.type,
+                createdBy: null,
+                createdAt: conversation?.createdAt,
+                lastMessageAt: null,
+                members: members.map(({ user_id, display_name }) => ({ id: user_id, displayName: display_name })),
+                messages: messages.map(({ messageId, fromUserId, messageContent, createdAt }) => {
+                    let fromUser = { id: fromUserId }
+                    return { id: messageId, messageContent, createdAt, fromUser }
+                }),
             }
         }
     },

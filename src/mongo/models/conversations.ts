@@ -26,7 +26,10 @@ const ConversationsSchema = new Schema<IConversation>({
         type: String,
         default: null,
     },
-    members: [String],
+    members: {
+        type: [String],
+        default: [],
+    },
     createdBy: String,
     createdAt: {
         type: Date,
