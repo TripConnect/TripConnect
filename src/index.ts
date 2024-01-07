@@ -2,6 +2,7 @@ const http = require('http');
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { Server } from 'socket.io';
+import { instrument } from "@socket.io/admin-ui";
 import cors from 'cors';
 import { json } from 'body-parser';
 const fs = require('fs')
@@ -26,12 +27,12 @@ const io = new Server(server, {
         origin: "*",
     }
 });
-const chatNamespace = io.of('/chat');
 const PORT = process.env.PORT || 3107;
 
 let accessLogStream = fs.createWriteStream(path.join(__dirname, 'log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
 
+const chatNamespace = io.of('/chat');
 chatNamespace.on("connection", async (socket) => {
     console.info("connected");
     let { token } = socket.handshake.auth;
@@ -51,8 +52,13 @@ chatNamespace.on("connection", async (socket) => {
         }
     });
     for (let conversation of userConversations) {
-        // socket.join(conversation.conversationId);
-        console.log(conversation.conversationId);
+        let room: String = conversation.conversationId;
+        logger.info({
+            message: "Join conversation",
+            userId: socket.data.userId,
+            conversationId: room,
+        })
+        socket.join(String(room));
     }
 
     socket.on("message", async ({ conversationId, messageContent }) => {
@@ -61,7 +67,13 @@ chatNamespace.on("connection", async (socket) => {
             conversationId,
             messageContent,
         });
-        socket.to(conversationId).emit("message", {
+        // let message = {
+        //     fromUserId: socket.data.userId,
+        //     conversationId,
+        //     messageContent,
+        //     createdAt: new Date(),
+        // };
+        chatNamespace.to(conversationId).emit("message", {
             userId: socket.data.userId,
             messageContent,
             conversationId,
