@@ -79,7 +79,7 @@ const resolvers = {
         },
         conversations: async (
             _: any,
-            { page = 1, limit = 10 }: { page: number, limit: number },
+            { page = 1, limit = 100 }: { page: number, limit: number },
             { token }: { token: string }
         ) => {
             let result: any = [];
