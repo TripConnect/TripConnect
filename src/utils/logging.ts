@@ -9,7 +9,7 @@ const logger = winston.createLogger({
         // write logs to the console
         new winston.transports.Console(),
         // write logs to a file
-        new winston.transports.File({ filename: path.join(__dirname, '../log/trip_connect.log') }),
+        new winston.transports.File({ filename: path.join(__dirname, '../../log/trip_connect.log') }),
     ]
 });
 

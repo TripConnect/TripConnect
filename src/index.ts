@@ -29,7 +29,7 @@ const io = new Server(server, {
 });
 const PORT = process.env.PORT || 3107;
 
-let accessLogStream = fs.createWriteStream(path.join(__dirname, 'log/access.log'), { flags: 'a' });
+let accessLogStream = fs.createWriteStream(path.join(__dirname, '../log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
 
 const chatNamespace = io.of('/chat');

@@ -3,3 +3,4 @@ src/database/data
 *.sqlite
 .env
 log
+.vscode

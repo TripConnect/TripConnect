@@ -1,8 +1,9 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: mysql-deployment
+  name: mysql
 spec:
+  serviceName: mysql
   replicas: 1
   selector:
     matchLabels:
@@ -14,26 +15,38 @@ spec:
     spec:
       containers:
       - name: mysql
-        image: mysql:8.2.0
+        image: mysql:latest
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: root
+          value: "root"
         - name: MYSQL_DATABASE
-          value: TripConnect
+          value: "TripConnect"
         - name: MYSQL_USER
-          value: service
+          value: "service"
         - name: MYSQL_PASSWORD
-          value: service
+          value: "service"
         ports:
         - containerPort: 3306
+  #       volumeMounts:
+  #       - name: mysql-persistent-storage
+  #         mountPath: /var/lib/mysql
+  # volumeClaimTemplates:
+  # - metadata:
+  #     name: mysql-persistent-storage
+  #   spec:
+  #     accessModes: [ "ReadWriteOnce" ]
+  #     resources:
+  #       requests:
+  #         storage: 1Gi
 
 ---
 
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: mongodb-deployment
+  name: mongodb
 spec:
+  serviceName: mongodb
   replicas: 1
   selector:
     matchLabels:
@@ -45,16 +58,61 @@ spec:
     spec:
       containers:
       - name: mongodb
-        image: mongo:7.0.5-rc0
+        image: mongo:latest
         env:
         - name: MONGO_INITDB_ROOT_USERNAME
-          value: admin
+          value: "admin"
         - name: MONGO_INITDB_ROOT_PASSWORD
-          value: admin_password
+          value: "admin"
         - name: MONGO_INITDB_DATABASE
-          value: dynamic_database
+          value: "tripconnect"
         ports:
         - containerPort: 27017
+  #       volumeMounts:
+  #       - name: mongodb-persistent-storage
+  #         mountPath: /data/db
+  # volumeClaimTemplates:
+  # - metadata:
+  #     name: mongodb-persistent-storage
+  #   spec:
+  #     accessModes: [ "ReadWriteOnce" ]
+  #     resources:
+  #       requests:
+  #         storage: 1Gi
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+  #       volumeMounts:
+  #       - name: redis-persistent-storage
+  #         mountPath: /data
+  # volumeClaimTemplates:
+  # - metadata:
+  #     name: redis-persistent-storage
+  #   spec:
+  #     accessModes: [ "ReadWriteOnce" ]
+  #     resources:
+  #       requests:
+  #         storage: 1Gi
 
 ---
 
@@ -69,7 +127,6 @@ spec:
     - protocol: TCP
       port: 3306
       targetPort: 3306
-  type: NodePort
 
 ---
 
@@ -84,4 +141,77 @@ spec:
     - protocol: TCP
       port: 27017
       targetPort: 27017
-  type: ClusterIP
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+
+---
+# Config map manifest
+
+
+---
+
+# Application manifests
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: tripconnect-replicaset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tripconnect
+  template:
+    metadata:
+      labels:
+        app: tripconnect
+    spec:
+      containers:
+      - name: tripconnect-container
+        image: tripconnect:development
+        ports:
+        - containerPort: 3107
+        env:
+          - name: SECRET_KEY
+            value: "shhhhh"
+          - name: MONGODB_CONNECTION_STRING
+            value: mongodb://admin:admin@mongodb-service:27017/local?authSource=admin
+          - name: DATEBASE_ADDRESS
+            value: mysql-service
+          - name: DATEBASE_USERNAME
+            value: service
+          - name: DATEBASE_PASSWORD
+            value: service
+          - name: DATEBASE_NAME
+            value: TripConnect
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tripconnect-service
+spec:
+  selector:
+    app: tripconnect
+  ports:
+    - protocol: TCP
+      port: 3107
+      nodePort: 31071
+      targetPort: 3107
+  type: NodePort
+
+---
