@@ -6,14 +6,11 @@ import { QueryTypes, Op } from "sequelize";
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
-import Trip from "../../database/models/trip";
 import logger from "../../utils/logging";
-import TripUserList from "../../database/models/trip_user_list";
-import Message from "../../database/models/message";
-import Conversation from "../../database/models/conversation";
-import db from "../../database/models";
 import Conversations from "../../mongo/models/conversations";
 import Messages from "../../mongo/models/messages";
+import { StatusCode } from "../../utils/graphql";
+import { log } from "console";
 
 const resolvers = {
     Query: {
@@ -121,7 +118,7 @@ const resolvers = {
             let conversation = await Conversations.findOne({ conversationId: id });
             if (!conversation) {
                 throw new GraphQLError("Conversation not found", {
-                    extensions: { code: 'NOT_FOUND' }
+                    extensions: { code: StatusCode.NOT_FOUND }
                 });
             }
             console.log({ id });
@@ -157,7 +154,7 @@ const resolvers = {
                 let user = await User.findOne({ where: { username } });
                 if (!user) throw new GraphQLError("User not found", {
                     extensions: {
-                        code: 'NOT_FOUND',
+                        code: StatusCode.NOT_FOUND,
                     }
                 });
 
@@ -193,46 +190,51 @@ const resolvers = {
 
         signup: async (
             _: any,
-            { username, password, display_name }: { username: string, password: string, display_name: string },
+            { username, password, displayName }: { username: string, password: string, displayName: string },
         ) => {
-            try {
-                const salt = await bcrypt.genSalt(12);
-                const hashedPassword = await bcrypt.hash(password, salt);
+            const salt = await bcrypt.genSalt(12);
+            const hashedPassword = await bcrypt.hash(password, salt);
 
-                let user_id = uuidv4();
+            let existUser = await User.findOne({where: { username }});
+            console.log({existUser});
 
-                let user = await User.create({
-                    user_id,
-                    username,
-                    display_name,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                });
-                let userCredential = await UserCredential.create({
+            if (existUser) throw new GraphQLError("Username is already exist", {
+                extensions: {
+                    code: StatusCode.CONFLICT,
+                }
+            });
+
+            let user = await User.create({
+                user_id: uuidv4(),
+                username,
+                display_name: displayName,
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
+
+            let userCredential = await UserCredential.create({
+                user_id: user.user_id,
+                credential: hashedPassword,
+            });
+
+            let accessToken = jwt.sign(
+                {
                     user_id: user.user_id,
-                    credential: hashedPassword,
-                });
-
-                let accessToken = jwt.sign(
-                    {
-                        user_id: user.user_id,
-                        username: user.username,
-                        credential: userCredential.credential,
-                    },
-                    process.env.SECRET_KEY || ""
-                );
-
-                return {
-                    id: user.user_id,
                     username: user.username,
-                    displayName: user.display_name,
-                    token: {
-                        accessToken,
-                    },
-                };
-            } catch (error) {
-                throw new Error("Login incorrect");
-            }
+                    credential: userCredential.credential,
+                },
+                process.env.SECRET_KEY || ""
+            );
+
+            return {
+                id: user.user_id,
+                username: user.username,
+                displayName: user.display_name,
+                token: {
+                    accessToken,
+                    refreshToken: "",
+                },
+            };
         },
 
         // createTrip: async (
