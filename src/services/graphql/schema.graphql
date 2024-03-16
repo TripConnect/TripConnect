@@ -18,9 +18,8 @@ type Token {
 
 type User {
     id: ID!
-    avatarUrl: String
-    username: String!
     avatar: String
+    username: String!
     displayName: String!
     token: Token
 }

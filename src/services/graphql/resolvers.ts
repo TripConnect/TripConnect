@@ -74,6 +74,7 @@ const resolvers = {
                 id: user.user_id,
                 username: user.username,
                 displayName: user.display_name,
+                avatar: user.avatar,
                 token: null,
             }))
         },
@@ -234,7 +235,7 @@ const resolvers = {
                 if(avatar !== undefined) {
                     const { createReadStream, filename, mimetype, encoding } = await avatar;
                     const stream = createReadStream();
-                    let avatarLocation = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
+                    avatarLocation = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
                     const out = require('fs').createWriteStream(process.env.STATIC_DIRECTORY + avatarLocation);
                     stream.pipe(out);
                     await finished(out);
@@ -267,6 +268,7 @@ const resolvers = {
                     id: user.user_id,
                     username: user.username,
                     displayName: user.display_name,
+                    avatar: user.avatar,
                     token: {
                         accessToken,
                         refreshToken: "",
