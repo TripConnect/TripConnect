@@ -36,11 +36,13 @@
   "dependencies": {
     "@apollo/server": "^4.7.1",
     "@socket.io/admin-ui": "^0.5.1",
+    "apollo-server-core": "^3.13.0",
     "bcrypt": "^5.1.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "graphql": "^16.6.0",
+    "graphql-upload-ts": "^2.1.2",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",

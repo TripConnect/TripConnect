@@ -11,8 +11,11 @@ import Conversations from "../../mongo/models/conversations";
 import Messages from "../../mongo/models/messages";
 import { StatusCode } from "../../utils/graphql";
 import { log } from "console";
+import { finished } from "stream/promises";
+const { GraphQLUpload } = require('graphql-upload-ts');
 
 const resolvers = {
+    Upload: GraphQLUpload,
     Query: {
         status: async () => {
             return { status: true };
@@ -146,6 +149,29 @@ const resolvers = {
         }
     },
     Mutation: {
+        singleUpload: async (
+            _: any,
+            { file }: {file: any}
+        ) => {
+            console.log("upoloaded files");
+            
+            const { createReadStream, filename, mimetype, encoding, ...rest } = await file;
+      
+            // Invoking the `createReadStream` will return a Readable Stream.
+            // See https://nodejs.org/api/stream.html#stream_readable_streams
+            const stream = createReadStream();
+      
+            // This is purely for demonstration purposes and will overwrite the
+            // local-file-output.txt in the current working directory on EACH upload.
+            console.log({ createReadStream, filename, mimetype, encoding, rest });
+
+            let destPath = `${process.env.UPLOAD_DIRECTORY}/${uuidv4()}.${filename.split('.').at(-1)}`;
+            const out = require('fs').createWriteStream(destPath);
+            stream.pipe(out);
+            await finished(out);
+      
+            return { filename, mimetype, encoding };
+        },
         login: async (
             _: any,
             { username, password }: { username: string, password: string },
@@ -190,51 +216,66 @@ const resolvers = {
 
         signup: async (
             _: any,
-            { username, password, displayName }: { username: string, password: string, displayName: string },
+            { username, password, displayName, avatar }: { username: string, password: string, displayName: string, avatar: Promise<any> },
         ) => {
-            const salt = await bcrypt.genSalt(12);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            try {
+                console.log({avatar});
+                const salt = await bcrypt.genSalt(12);
+                const hashedPassword = await bcrypt.hash(password, salt);
+                let existUser = await User.findOne({where: { username }});
+                console.log({existUser});
 
-            let existUser = await User.findOne({where: { username }});
-            console.log({existUser});
+                if (existUser) throw new GraphQLError("Username is already exist", {
+                    extensions: {
+                        code: StatusCode.CONFLICT,
+                    }
+                });
 
-            if (existUser) throw new GraphQLError("Username is already exist", {
-                extensions: {
-                    code: StatusCode.CONFLICT,
+                let avatarURL = null;
+                if(avatar !== undefined) {
+                    const { createReadStream, filename, mimetype, encoding } = await avatar;
+                    const stream = createReadStream();
+                    avatarURL = `${process.env.UPLOAD_DIRECTORY}/${uuidv4()}.${filename.split('.').at(-1)}`;
+                    const out = require('fs').createWriteStream(avatarURL);
+                    stream.pipe(out);
+                    await finished(out);
                 }
-            });
 
-            let user = await User.create({
-                user_id: uuidv4(),
-                username,
-                display_name: displayName,
-                created_at: new Date(),
-                updated_at: new Date(),
-            });
+                let user = await User.create({
+                    user_id: uuidv4(),
+                    username,
+                    display_name: displayName,
+                    avatar: avatarURL,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                });
 
-            let userCredential = await UserCredential.create({
-                user_id: user.user_id,
-                credential: hashedPassword,
-            });
-
-            let accessToken = jwt.sign(
-                {
+                let userCredential = await UserCredential.create({
                     user_id: user.user_id,
-                    username: user.username,
-                    credential: userCredential.credential,
-                },
-                process.env.SECRET_KEY || ""
-            );
+                    credential: hashedPassword,
+                });
 
-            return {
-                id: user.user_id,
-                username: user.username,
-                displayName: user.display_name,
-                token: {
-                    accessToken,
-                    refreshToken: "",
-                },
-            };
+                let accessToken = jwt.sign(
+                    {
+                        user_id: user.user_id,
+                        username: user.username,
+                        credential: userCredential.credential,
+                    },
+                    process.env.SECRET_KEY || ""
+                );
+
+                return {
+                    id: user.user_id,
+                    username: user.username,
+                    displayName: user.display_name,
+                    token: {
+                        accessToken,
+                        refreshToken: "",
+                    },
+                };
+            } catch(error) {
+                console.log(error);
+            }
         },
 
         // createTrip: async (

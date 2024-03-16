@@ -1,4 +1,11 @@
 scalar DateTime
+scalar Upload
+
+type File {
+    filename: String!
+    mimetype: String!
+    encoding: String!
+}
 
 type HealthCheckStatus {
     status: Boolean!
@@ -11,7 +18,9 @@ type Token {
 
 type User {
     id: ID!
+    avatarUrl: String
     username: String!
+    avatar: String
     displayName: String!
     token: Token
 }
@@ -59,7 +68,8 @@ type Query {
 }
 
 type Mutation {
+    singleUpload(file: Upload!): File!
     login(username: String!, password: String!): User!
-    signup(username: String!, password: String!, displayName: String!): User!
+    signup(username: String!, password: String!, displayName: String!, avatar: Upload): User!
     createConversation(name: String, type: String!, members: String!): Conversation!
 }
