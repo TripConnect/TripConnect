@@ -18,6 +18,9 @@ import Conversations from './mongo/models/conversations';
 import Messages from './mongo/models/messages';
 import { graphqlUploadExpress } from 'graphql-upload-ts';
 
+const PORT = process.env.PORT || 3107;
+let accessLogStream = fs.createWriteStream(path.join(__dirname, '../log/access.log'), { flags: 'a' });
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -25,11 +28,12 @@ const io = new Server(server, {
         origin: "*",
     }
 });
-const PORT = process.env.PORT || 3107;
 
-let accessLogStream = fs.createWriteStream(path.join(__dirname, '../log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }))
+
+connect(process.env.MONGODB_CONNECTION_STRING as string);
 
 const chatNamespace = io.of('/chat');
 chatNamespace.on("connection", async (socket) => {
@@ -66,12 +70,6 @@ chatNamespace.on("connection", async (socket) => {
             conversationId,
             messageContent,
         });
-        // let message = {
-        //     fromUserId: socket.data.userId,
-        //     conversationId,
-        //     messageContent,
-        //     createdAt: new Date(),
-        // };
         chatNamespace.to(conversationId).emit("message", {
             userId: socket.data.userId,
             messageContent,
@@ -87,8 +85,6 @@ app.get('/status', (req: Request, res: Response) => {
 
 gqlServer
     .start()
-    .then(() => connect(process.env.MONGODB_CONNECTION_STRING as string))
-    .then(() => app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 })))
     .then(() => app.use(
         '/graphql',
         cors<cors.CorsRequest>(),
