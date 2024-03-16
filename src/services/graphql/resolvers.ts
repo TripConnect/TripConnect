@@ -223,7 +223,6 @@ const resolvers = {
                 const salt = await bcrypt.genSalt(12);
                 const hashedPassword = await bcrypt.hash(password, salt);
                 let existUser = await User.findOne({where: { username }});
-                console.log({existUser});
 
                 if (existUser) throw new GraphQLError("Username is already exist", {
                     extensions: {
@@ -231,12 +230,12 @@ const resolvers = {
                     }
                 });
 
-                let avatarURL = null;
+                let avatarLocation = null;
                 if(avatar !== undefined) {
                     const { createReadStream, filename, mimetype, encoding } = await avatar;
                     const stream = createReadStream();
-                    avatarURL = `${process.env.UPLOAD_DIRECTORY}/${uuidv4()}.${filename.split('.').at(-1)}`;
-                    const out = require('fs').createWriteStream(avatarURL);
+                    let avatarLocation = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
+                    const out = require('fs').createWriteStream(process.env.STATIC_DIRECTORY + avatarLocation);
                     stream.pipe(out);
                     await finished(out);
                 }
@@ -245,7 +244,7 @@ const resolvers = {
                     user_id: uuidv4(),
                     username,
                     display_name: displayName,
-                    avatar: avatarURL,
+                    avatar: avatarLocation,
                     created_at: new Date(),
                     updated_at: new Date(),
                 });

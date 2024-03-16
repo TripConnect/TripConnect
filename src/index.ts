@@ -13,14 +13,10 @@ import morgan from 'morgan';
 
 import gqlServer from './services/graphql';
 import logger from './utils/logging';
-import User from './database/models/user';
 import { connect } from "mongoose";
 import Conversations from './mongo/models/conversations';
 import Messages from './mongo/models/messages';
 import { graphqlUploadExpress } from 'graphql-upload-ts';
-import UPLOAD_DIRECTORY_URL from "./config/UPLOAD_DIRECTORY_URL";
-import makeDir from "make-dir";
-import { fileURLToPath } from 'url';
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +29,7 @@ const PORT = process.env.PORT || 3107;
 
 let accessLogStream = fs.createWriteStream(path.join(__dirname, '../log/access.log'), { flags: 'a' });
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: accessLogStream }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const chatNamespace = io.of('/chat');
 chatNamespace.on("connection", async (socket) => {
@@ -90,7 +87,6 @@ app.get('/status', (req: Request, res: Response) => {
 
 gqlServer
     .start()
-    .then(() => makeDir(fileURLToPath(UPLOAD_DIRECTORY_URL)))
     .then(() => connect(process.env.MONGODB_CONNECTION_STRING as string))
     .then(() => app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 })))
     .then(() => app.use(
