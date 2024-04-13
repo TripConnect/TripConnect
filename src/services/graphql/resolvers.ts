@@ -12,6 +12,7 @@ import Messages from "../../mongo/models/messages";
 import { StatusCode } from "../../utils/graphql";
 import { log } from "console";
 import { finished } from "stream/promises";
+import Trip from "../../database/models/trip";
 const { GraphQLUpload } = require('graphql-upload-ts');
 
 const resolvers = {
@@ -150,29 +151,6 @@ const resolvers = {
         }
     },
     Mutation: {
-        singleUpload: async (
-            _: any,
-            { file }: {file: any}
-        ) => {
-            console.log("upoloaded files");
-            
-            const { createReadStream, filename, mimetype, encoding, ...rest } = await file;
-      
-            // Invoking the `createReadStream` will return a Readable Stream.
-            // See https://nodejs.org/api/stream.html#stream_readable_streams
-            const stream = createReadStream();
-      
-            // This is purely for demonstration purposes and will overwrite the
-            // local-file-output.txt in the current working directory on EACH upload.
-            console.log({ createReadStream, filename, mimetype, encoding, rest });
-
-            let destPath = `${process.env.UPLOAD_DIRECTORY}/${uuidv4()}.${filename.split('.').at(-1)}`;
-            const out = require('fs').createWriteStream(destPath);
-            stream.pipe(out);
-            await finished(out);
-      
-            return { filename, mimetype, encoding };
-        },
         login: async (
             _: any,
             { username, password }: { username: string, password: string },
@@ -203,6 +181,7 @@ const resolvers = {
                     id: user.user_id,
                     username: user.username,
                     displayName: user.display_name,
+                    avatar: user.avatar,
                     token: {
                         accessToken,
                         refreshToken: "",
@@ -279,50 +258,30 @@ const resolvers = {
             }
         },
 
-        // createTrip: async (
-        //     _: any,
-        //     { name, description }: { name: string, description: string },
-        //     { token }: { token: string }
-        // ) => {
-        //     let decoded = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-
-        //     let trip = await Trip.create({
-        //         name,
-        //         description,
-        //         created_by: decoded.user_id,
-        //         created_at: new Date(),
-        //     })
-        //     return { trip_id: trip.id };
-        // },
-
-        // joinTrip: async (
-        //     _: any,
-        //     { trip_id }: { trip_id: number },
-        //     { token }: { token: string }
-        // ) => {
-        //     let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-
-        //     if (!Trip.findOne({ where: { id: trip_id } })) {
-        //         throw new GraphQLError("Trip not found", {
-        //             extensions: {
-        //                 code: 'NOT_FOUND',
-        //             }
-        //         });
-        //     }
-        //     if (TripUserList.findOne({ where: { trip_id, user_id } })) {
-        //         throw new GraphQLError("User in trip already", {
-        //             extensions: {
-        //                 code: 'BAD_REQUEST',
-        //             }
-        //         });
-        //     }
-
-        //     let tripUser = await TripUserList.create({
-        //         trip_id,
-        //         user_id,
-        //     });
-        //     return { trip_id: tripUser.trip_id, user_id: tripUser.user_id };
-        // },
+        createTrip: async (
+            _: any,
+            { name, description }: { name: string, description: string },
+            { token, currentUserId }: { token: string, currentUserId: string }
+        ) => {
+            let trip = await Trip.create({
+                id: uuidv4(),
+                name,
+                description,
+                created_at: new Date(),
+                created_by: currentUserId,
+            });
+            return {
+                id: trip.id,
+                name: trip.name,
+                description: trip.description,
+                createdBy: {
+                    id: currentUserId,
+                },
+                members: [],
+                points: [],
+                createdAt: trip.createdAt,
+            };
+        },
 
         createConversation: async (
             _: any,

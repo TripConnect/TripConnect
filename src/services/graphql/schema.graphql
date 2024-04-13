@@ -27,7 +27,17 @@ type User {
 type Trip {
     id: ID!
     name: String!
+    description: String!
+    createdBy: User!
     members: [User!]!
+    points: [TripPoint!]!
+    createdAt: DateTime!
+}
+
+type TripPoint {
+    name: String!
+    note: String
+    arrivedAt: DateTime!
 }
 
 enum ConversationType {
@@ -67,8 +77,8 @@ type Query {
 }
 
 type Mutation {
-    singleUpload(file: Upload!): File!
     login(username: String!, password: String!): User!
     signup(username: String!, password: String!, displayName: String!, avatar: Upload): User!
     createConversation(name: String, type: String!, members: String!): Conversation!
+    createTrip(name: String!, description: String!): Trip!
 }
