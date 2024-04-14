@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { GraphQLError } from 'graphql';
 import { QueryTypes, Op } from "sequelize";
+let grpc = require('@grpc/grpc-js');
 
 import User from "../../database/models/user";
 import UserCredential from "../../database/models/user_credential";
@@ -173,9 +174,25 @@ const resolvers = {
                 stream.pipe(out);
                 await finished(out);
             }
-
-            let response = await UserService.signup({ username, password, displayName, avatarURL });
-            return response;
+            try {
+                let response = await UserService.signup({ username, password, displayName, avatarURL });
+                return response;
+            } catch (err: any) {
+                switch (err.code) {
+                    case grpc.status.INVALID_ARGUMENT:
+                        throw new GraphQLError("Username is already exist", {
+                            extensions: {
+                                code: StatusCode.CONFLICT,
+                            }
+                        });
+                    default:
+                        throw new GraphQLError("Something went wrong", {
+                            extensions: {
+                                code: StatusCode.INTERNAL_SERVER_ERROR,
+                            }
+                        });
+                }
+            }
         },
 
         createTrip: async (
