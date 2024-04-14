@@ -13,6 +13,7 @@ import { StatusCode } from "../../utils/graphql";
 import { log } from "console";
 import { finished } from "stream/promises";
 import Trip from "../../database/models/trip";
+import UserService from "../grpc/userService";
 const { GraphQLUpload } = require('graphql-upload-ts');
 
 const resolvers = {
@@ -155,43 +156,8 @@ const resolvers = {
             _: any,
             { username, password }: { username: string, password: string },
         ) => {
-            try {
-                let user = await User.findOne({ where: { username } });
-                if (!user) throw new GraphQLError("User not found", {
-                    extensions: {
-                        code: StatusCode.NOT_FOUND,
-                    }
-                });
-
-                let userCredential = await UserCredential.findOne({ where: { user_id: user.user_id } });
-                const isPasswordValid = await bcrypt.compare(password, userCredential.credential);
-                if (!isPasswordValid) throw new Error("Authorization failed");
-
-                let accessToken = jwt.sign(
-                    {
-                        user_id: user.user_id,
-                        username: user.username,
-                        credential: userCredential.credential,
-                    },
-                    process.env.SECRET_KEY || ""
-                );
-
-                logger.info({ message: "Login success", user_id: user.user_id });
-                return {
-                    id: user.user_id,
-                    username: user.username,
-                    displayName: user.display_name,
-                    avatar: user.avatar,
-                    token: {
-                        accessToken,
-                        refreshToken: "",
-                    },
-                }
-            } catch (error) {
-                console.log(error);
-
-                return { token: null };
-            }
+            let response = await UserService.signin({username, password});
+            return response;
         },
 
         signup: async (
