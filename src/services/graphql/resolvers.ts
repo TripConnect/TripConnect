@@ -164,64 +164,18 @@ const resolvers = {
             _: any,
             { username, password, displayName, avatar }: { username: string, password: string, displayName: string, avatar: Promise<any> },
         ) => {
-            try {
-                console.log({avatar});
-                const salt = await bcrypt.genSalt(12);
-                const hashedPassword = await bcrypt.hash(password, salt);
-                let existUser = await User.findOne({where: { username }});
-
-                if (existUser) throw new GraphQLError("Username is already exist", {
-                    extensions: {
-                        code: StatusCode.CONFLICT,
-                    }
-                });
-
-                let avatarLocation = null;
-                if(avatar !== undefined) {
-                    const { createReadStream, filename, mimetype, encoding } = await avatar;
-                    const stream = createReadStream();
-                    avatarLocation = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
-                    const out = require('fs').createWriteStream(process.env.STATIC_DIRECTORY + avatarLocation);
-                    stream.pipe(out);
-                    await finished(out);
-                }
-
-                let user = await User.create({
-                    user_id: uuidv4(),
-                    username,
-                    display_name: displayName,
-                    avatar: avatarLocation,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                });
-
-                let userCredential = await UserCredential.create({
-                    user_id: user.user_id,
-                    credential: hashedPassword,
-                });
-
-                let accessToken = jwt.sign(
-                    {
-                        user_id: user.user_id,
-                        username: user.username,
-                        credential: userCredential.credential,
-                    },
-                    process.env.SECRET_KEY || ""
-                );
-
-                return {
-                    id: user.user_id,
-                    username: user.username,
-                    displayName: user.display_name,
-                    avatar: user.avatar,
-                    token: {
-                        accessToken,
-                        refreshToken: "",
-                    },
-                };
-            } catch(error) {
-                console.log(error);
+            let avatarURL = null;
+            if(avatar !== undefined) {
+                const { createReadStream, filename, mimetype, encoding } = await avatar;
+                const stream = createReadStream();
+                avatarURL = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
+                const out = require('fs').createWriteStream(process.env.STATIC_DIRECTORY + avatarURL);
+                stream.pipe(out);
+                await finished(out);
             }
+
+            let response = await UserService.signup({ username, password, displayName, avatarURL });
+            return response;
         },
 
         createTrip: async (
