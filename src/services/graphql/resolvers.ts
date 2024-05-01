@@ -27,25 +27,8 @@ const resolvers = {
             _: any,
             { user_id }: { user_id: string }
         ) => {
-            let user = await User.findOne({ where: { user_id }, limit: 50 });
-            if (!user) throw new Error("User not found");
-            let userCredential = await UserCredential.findOne({ where: { user_id: user.user_id } });
-            let accessToken = jwt.sign(
-                {
-                    user_id: user.user_id,
-                    username: user.username,
-                    credential: userCredential.credential,
-                },
-                process.env.SECRET_KEY || ""
-            );
-            return {
-                id: user.user_id,
-                username: user.username,
-                displayName: user.display_name,
-                token: {
-                    accessToken,
-                },
-            };
+            let data = await UserService.findUser({ userId: user_id });
+            return data;
         },
         // loadTripMembers: async (
         //     _: any,
@@ -157,7 +140,7 @@ const resolvers = {
             _: any,
             { username, password }: { username: string, password: string },
         ) => {
-            let response = await UserService.signin({username, password});
+            let response = await UserService.signin({ username, password });
             return response;
         },
 
@@ -166,7 +149,7 @@ const resolvers = {
             { username, password, displayName, avatar }: { username: string, password: string, displayName: string, avatar: Promise<any> },
         ) => {
             let avatarURL = null;
-            if(avatar !== undefined) {
+            if (avatar !== undefined) {
                 const { createReadStream, filename, mimetype, encoding } = await avatar;
                 const stream = createReadStream();
                 avatarURL = `/upload/${uuidv4()}.${filename.split('.').at(-1)}`;
