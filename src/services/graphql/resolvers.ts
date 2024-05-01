@@ -48,21 +48,11 @@ const resolvers = {
         // },
         users: async (
             _: any,
-            { searchTerm }: { searchTerm: number },
+            { searchTerm }: { searchTerm: string },
             { token }: { token: string }
         ) => {
-            let users = await User.findAll({
-                where: {
-                    display_name: { [Op.like]: `%${searchTerm}%` }
-                }
-            });
-            return users.map((user: { [key: string]: any; }) => ({
-                id: user.user_id,
-                username: user.username,
-                displayName: user.display_name,
-                avatar: user.avatar,
-                token: null,
-            }))
+            let data = await UserService.searchUser({ term: searchTerm });
+            return data.users;
         },
         conversations: async (
             _: any,

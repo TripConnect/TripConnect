@@ -38,4 +38,14 @@ export default class UserService extends ServiceBase {
             });
         });
     }
+
+    static async searchUser(
+        { term }: { term: string }): Promise<any> {
+        return new Promise((resolve, reject) => {
+            UserService.stub.SearchUser({ term }, (error: any, result: any) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        });
+    }
 }
