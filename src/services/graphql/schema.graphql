@@ -21,7 +21,11 @@ type User {
     avatar: String
     username: String!
     displayName: String!
-    token: Token
+}
+
+type AuthPayload {
+    userInfo: User!
+    token: Token!
 }
 
 type Trip {
@@ -77,8 +81,8 @@ type Query {
 }
 
 type Mutation {
-    login(username: String!, password: String!): User!
-    signup(username: String!, password: String!, displayName: String!, avatar: Upload): User!
+    signin(username: String!, password: String!): AuthPayload!
+    signup(username: String!, password: String!, displayName: String!, avatar: Upload): AuthPayload!
     createConversation(name: String, type: String!, members: String!): Conversation!
     createTrip(name: String!, description: String!): Trip!
 }

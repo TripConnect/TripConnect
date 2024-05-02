@@ -126,7 +126,7 @@ const resolvers = {
         }
     },
     Mutation: {
-        login: async (
+        signin: async (
             _: any,
             { username, password }: { username: string, password: string },
         ) => {
