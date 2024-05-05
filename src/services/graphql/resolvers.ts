@@ -60,20 +60,10 @@ const resolvers = {
             { page = 1, limit = 100, messageLimit = 10 }: { page: number, limit: number, messageLimit: number },
             { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
-            let result: any = [];
-            let conversations = await Conversations
-                .find({ members: { $in: [currentUserId] } })
-                .skip(limit * (Math.abs(page) - 1))
-                .limit(limit)
-                .exec();
-            for (let conversation of conversations) {
-                let messages = await Messages
-                    .find({ conversationId: conversation.conversationId })
-                    .sort({ createdAt: -1 })
-                    .limit(messageLimit)
-                    .exec();
-
-                let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { id: userId } })));
+            let result = [];
+            let rpcConversations = await ChatService.searchConversations({ memberIds: [currentUserId], page, limit, messageLimit });
+            for (let conversation of rpcConversations) {
+                let rpcMembers = await UserService.searchUser({ userIds: conversation.members });
                 result.push({
                     id: conversation.conversationId,
                     name: conversation?.name,
@@ -81,11 +71,8 @@ const resolvers = {
                     createdBy: null,
                     createdAt: conversation?.createdAt,
                     lastMessageAt: null,
-                    members: members.map(({ user_id, display_name }) => ({ id: user_id, displayName: display_name })),
-                    messages: messages.map(({ messageId, fromUserId, messageContent, createdAt }) => {
-                        let fromUser = { id: fromUserId }
-                        return { id: messageId, messageContent, createdAt, fromUser }
-                    }),
+                    members: rpcMembers.users,
+                    messages: rpcConversations.messages,
                 });
             }
             return result;
@@ -95,32 +82,31 @@ const resolvers = {
             { id, page = -1, limit = 100 }: { id: string, page: number, limit: number },
             { token }: { token: string }
         ) => {
-            let conversation = await Conversations.findOne({ conversationId: id });
-            if (!conversation) {
-                throw new GraphQLError("Conversation not found", {
-                    extensions: { code: StatusCode.NOT_FOUND }
-                });
-            }
-            let messages = await Messages
-                .find({ conversationId: id })
-                .sort({ createdAt: page < 0 ? -1 : 1 })
-                .skip(limit * (Math.abs(page) - 1))
-                .limit(limit)
-                .exec();
+            try {
+                let rpcConversation = await ChatService.findConversation({ conversationId: id, page: page, limit: limit });
+                let rpcMembers = await UserService.searchUser({ userIds: rpcConversation.memberIds });
 
-            let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { id: userId } })));
-            return {
-                id,
-                name: conversation?.name,
-                type: conversation?.type,
-                createdBy: null,
-                createdAt: conversation?.createdAt,
-                lastMessageAt: null,
-                members: members.map(({ user_id, display_name }) => ({ id: user_id, displayName: display_name })),
-                messages: messages.map(({ messageId, fromUserId, messageContent, createdAt }) => {
-                    let fromUser = { id: fromUserId }
-                    return { id: messageId, messageContent, createdAt, fromUser }
-                }),
+                let responseConversation = {
+                    ...rpcConversation,
+                    members: rpcMembers.users,
+                };
+                return responseConversation;
+            } catch (error: any) {
+                switch (error.code) {
+                    case grpc.status.NOT_FOUND:
+                        throw new GraphQLError("Conversation not found", {
+                            extensions: {
+                                code: StatusCode.BAD_REQUEST,
+                            }
+                        });
+                    default:
+                        logger.error(error.message);
+                        throw new GraphQLError("Something went wrong", {
+                            extensions: {
+                                code: StatusCode.INTERNAL_SERVER_ERROR,
+                            }
+                        });
+                }
             }
         }
     },
@@ -219,7 +205,7 @@ const resolvers = {
                 let memberIds = members.split(",");
                 let membersInfo = await UserService.searchUser({ userIds: memberIds });
 
-                if (membersInfo.length !== memberIds) {
+                if (membersInfo.users.length !== memberIds.length) {
                     throw new GraphQLError("Member not found", {
                         extensions: {
                             code: StatusCode.NOT_FOUND,
@@ -236,7 +222,7 @@ const resolvers = {
 
                 return {
                     ...data,
-                    members: membersInfo,
+                    members: membersInfo.users,
                 };
             } catch (error: any) {
                 if (error instanceof GraphQLError) throw error;

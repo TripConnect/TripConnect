@@ -10,9 +10,31 @@ export default class ChatService extends ServiceBase {
         `${ChatService.STUB_ADDRESS}:${ChatService.STUB_PORT}`, grpc.credentials.createInsecure());
 
     public static async createConversation(
-        { ownerId, name, type, memberIds  }: { ownerId: string, name: string, type: string, memberIds: string[] }): Promise<any> {
+        { ownerId, name, type, memberIds }: { ownerId: string, name: string, type: string, memberIds: string[] }): Promise<any> {
         return new Promise((resolve, reject) => {
             ChatService.stub.CreateConversation({ ownerId, name, type, memberIds }, (error: Error, result: any) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        });
+    }
+
+    public static async searchConversations(
+        { type, memberIds, term, page = 1, limit = 50, messageLimit = 10 }:
+            { type?: string | null, memberIds?: string[] | null, term?: string | null, page?: number | null, limit?: number | null, messageLimit?: number | null }): Promise<any> {
+        return new Promise((resolve, reject) => {
+            ChatService.stub.SearchConversations({ type, memberIds, term, page, limit, messageLimit }, (error: Error, result: any) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        });
+    }
+
+    public static async findConversation(
+        { conversationId, page = -1, limit = 100 }:
+            { conversationId: string, page?: number, limit?: number }): Promise<any> {
+        return new Promise((resolve, reject) => {
+            ChatService.stub.FindConversation({ conversationId, page, limit }, (error: Error, result: any) => {
                 if (error) reject(error);
                 else resolve(result);
             });
