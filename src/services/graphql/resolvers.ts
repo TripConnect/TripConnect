@@ -66,13 +66,18 @@ const resolvers = {
                 let rpcMembers = await UserService.searchUser({ userIds: conversation.members });
                 result.push({
                     id: conversation.conversationId,
-                    name: conversation?.name,
-                    type: conversation?.type,
+                    name: conversation.name,
+                    type: conversation.type,
                     createdBy: null,
                     createdAt: conversation?.createdAt,
                     lastMessageAt: null,
                     members: rpcMembers.users,
-                    messages: rpcConversations.messages,
+                    messages: rpcConversations.messages.map((m: any) => {
+                        return {
+                            ...m,
+                            fromUser: rpcMembers.users.find((rpcUser: any) => rpcUser.id === m.fromUserId),
+                        }
+                    }),
                 });
             }
             return result;
@@ -89,6 +94,12 @@ const resolvers = {
                 let responseConversation = {
                     ...rpcConversation,
                     members: rpcMembers.users,
+                    messages: rpcConversation.messages.map((message: any) => {
+                        return {
+                           ...message,
+                            fromUser: rpcMembers.users.find((rpcUser: any) => rpcUser.id === message.fromUserId)
+                        }
+                    }),
                 };
                 return responseConversation;
             } catch (error: any) {

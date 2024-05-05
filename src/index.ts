@@ -17,6 +17,7 @@ import { connect } from "mongoose";
 import Conversations from './mongo/models/conversations';
 import Messages from './mongo/models/messages';
 import { graphqlUploadExpress } from 'graphql-upload-ts';
+import ChatService from './services/grpc/chatService';
 
 const PORT = process.env.PORT || 3107;
 let accessLogStream = fs.createWriteStream(path.join(__dirname, '../log/access.log'), { flags: 'a' });
@@ -44,17 +45,12 @@ chatNamespace.on("connection", async (socket) => {
         logger.warn({ "message": "Reject socketio connection" })
         return;
     }
-    let { user_id } = jwt.verify(token, process.env.SECRET_KEY || "") as { user_id: string };
-    socket.data.userId = user_id;
+    let { userId } = jwt.verify(token, process.env.SECRET_KEY || "") as { userId: string };
+    socket.data.userId = userId;
 
-    let userConversations = await Conversations.find({
-        "members": {
-            $elemMatch: {
-                $eq: socket.data.userId
-            }
-        }
-    });
-    for (let conversation of userConversations) {
+    let rpcConversations = await ChatService.searchConversations({ memberIds: [userId] });
+
+    for (let conversation of rpcConversations.conversations) {
         let room: String = conversation.conversationId;
         logger.info({
             message: "Join conversation",
@@ -64,18 +60,23 @@ chatNamespace.on("connection", async (socket) => {
         socket.join(String(room));
     }
 
-    socket.on("message", async ({ conversationId, messageContent }) => {
-        let message = await Messages.create({
-            fromUserId: socket.data.userId,
-            conversationId,
-            messageContent,
-        });
-        chatNamespace.to(conversationId).emit("message", {
-            userId: socket.data.userId,
-            messageContent,
-            conversationId,
-            createdAt: message.createdAt,
-        });
+    socket.on("message", async (event) => {
+        try {
+            let { conversationId, messageContent } = event;
+            let rpcMessage = await ChatService.createChatMessage({ conversationId, messageContent, fromUserId: socket.data.userId });
+            
+            let chatPayload = {
+                userId: socket.data.userId,
+                messageContent,
+                conversationId,
+                createdAt: rpcMessage.createdAt,
+            }
+            logger.info(chatPayload);
+            chatNamespace.to(conversationId).emit("message", chatPayload);
+        } catch (error: any) {
+            console.error(error);
+            logger.error(error.message);
+        }
     });
 });
 

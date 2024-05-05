@@ -31,10 +31,19 @@ export default class ChatService extends ServiceBase {
     }
 
     public static async findConversation(
-        { conversationId, page = -1, limit = 100 }:
-            { conversationId: string, page?: number, limit?: number }): Promise<any> {
+        { conversationId, page = -1, limit = 100 }: { conversationId: string, page?: number, limit?: number }): Promise<any> {
         return new Promise((resolve, reject) => {
             ChatService.stub.FindConversation({ conversationId, page, limit }, (error: Error, result: any) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        });
+    }
+
+    public static async createChatMessage(
+        { conversationId, fromUserId, messageContent }: { conversationId: string, fromUserId: string, messageContent: string }): Promise<any> {
+        return new Promise((resolve, reject) => {
+            ChatService.stub.CreateChatMessage({ conversationId, fromUserId, messageContent }, (error: Error, result: any) => {
                 if (error) reject(error);
                 else resolve(result);
             });
