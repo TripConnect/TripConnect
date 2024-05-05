@@ -3,7 +3,8 @@ import { DataTypes } from 'sequelize';
 import db from '.';
 
 const User = db.sequelize.define('User', {
-    user_id: {
+    id: {
+        primaryKey: true,
         type: DataTypes.STRING,
         allowNull: false
     },

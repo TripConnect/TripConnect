@@ -15,6 +15,7 @@ import { log } from "console";
 import { finished } from "stream/promises";
 import Trip from "../../database/models/trip";
 import UserService from "../grpc/userService";
+import ChatService from "../grpc/chatService";
 const { GraphQLUpload } = require('graphql-upload-ts');
 
 const resolvers = {
@@ -56,12 +57,12 @@ const resolvers = {
         },
         conversations: async (
             _: any,
-            { page = 1, limit = 100 }: { page: number, limit: number },
-            { token }: { token: string }
+            { page = 1, limit = 100, messageLimit = 10 }: { page: number, limit: number, messageLimit: number },
+            { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
             let result: any = [];
             let conversations = await Conversations
-                .find()
+                .find({ members: { $in: [currentUserId] } })
                 .skip(limit * (Math.abs(page) - 1))
                 .limit(limit)
                 .exec();
@@ -69,11 +70,10 @@ const resolvers = {
                 let messages = await Messages
                     .find({ conversationId: conversation.conversationId })
                     .sort({ createdAt: -1 })
-                    .skip(limit * (Math.abs(page) - 1))
-                    .limit(limit)
+                    .limit(messageLimit)
                     .exec();
 
-                let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { user_id: userId } })));
+                let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { id: userId } })));
                 result.push({
                     id: conversation.conversationId,
                     name: conversation?.name,
@@ -101,7 +101,6 @@ const resolvers = {
                     extensions: { code: StatusCode.NOT_FOUND }
                 });
             }
-            console.log({ id });
             let messages = await Messages
                 .find({ conversationId: id })
                 .sort({ createdAt: page < 0 ? -1 : 1 })
@@ -109,7 +108,7 @@ const resolvers = {
                 .limit(limit)
                 .exec();
 
-            let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { user_id: userId } })));
+            let members = await Promise.all(conversation.members.map(userId => User.findOne({ where: { id: userId } })));
             return {
                 id,
                 name: conversation?.name,
@@ -147,7 +146,7 @@ const resolvers = {
                                 code: StatusCode.INTERNAL_SERVER_ERROR,
                             }
                         });
-                }             
+                }
             }
         },
 
@@ -212,48 +211,34 @@ const resolvers = {
 
         createConversation: async (
             _: any,
-            { name, members, type }: { name: string, members: string, type: string },
+            { type, name, members }: { type: string, name: string, members: string },
             { token, currentUserId }: { token: string, currentUserId: string }
         ) => {
-            switch (type) {
-                case "PRIVATE":
-                    console.log({ members });
-                    let existConversation = await Conversations.findOne({
-                        type: "PRIVATE",
-                        members: { $all: members.split(",") }
-                    });
-                    if (existConversation) {
-                        return {
-                            id: existConversation.conversationId,
-                            name: existConversation.name,
-                            members: existConversation.members,
-                            messages: [],
-                            type: existConversation.type,
-                            createdBy: existConversation.createdBy,
-                            createdAt: existConversation.createdAt,
-                            lastMessageAt: existConversation.lastMessageAt,
-                        }
-                    }
+            // Note: The new private conversation will not created if that is exist already
+            try {
+                let data = await ChatService.createConversation({
+                    ownerId: currentUserId,
+                    name,
+                    memberIds: members.split(","),
+                    type,
+                });
 
-                    let conversation = await new Conversations({
-                        conversationId: uuidv4(),
-                        name: null,
-                        type,
-                        members: members.split(","),
-                        createdBy: currentUserId,
-                        lastMessageAt: null,
-                    }).save();
+                let membersInfo = await UserService.searchUser({ userIds: data.memberIds });
 
-                    return {
-                        id: conversation.conversationId,
-                        name: conversation.baseModelName,
-                        members: conversation.members,
-                        messages: [],
-                        type: conversation.type,
-                        createdBy: conversation.createdBy,
-                        createdAt: conversation.createdAt,
-                        lastMessageAt: conversation.lastMessageAt,
-                    }
+                return {
+                    ...data,
+                    members: membersInfo,
+                };
+            } catch (error: any) {
+                switch (error.code) {
+                    default:
+                        logger.error(error.message);
+                        throw new GraphQLError("Something went wrong", {
+                            extensions: {
+                                code: StatusCode.INTERNAL_SERVER_ERROR,
+                            }
+                        });
+                }
             }
         },
     },

@@ -77,7 +77,7 @@ type Query {
     user(id: String!): User!
     users(searchTerm: String!): [User!]!
     conversation(id: String!): Conversation!
-    conversations(page: Int, limit: Int): [Conversation!]!
+    conversations(page: Int, limit: Int, messageLimit: Int): [Conversation!]!
 }
 
 type Mutation {
