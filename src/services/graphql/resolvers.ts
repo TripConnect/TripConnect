@@ -130,8 +130,25 @@ const resolvers = {
             _: any,
             { username, password }: { username: string, password: string },
         ) => {
-            let response = await UserService.signin({ username, password });
-            return response;
+            try {
+                let response = await UserService.signin({ username, password });
+                return response;
+            } catch (err: any) {
+                switch (err.code) {
+                    case grpc.status.INVALID_ARGUMENT:
+                        throw new GraphQLError("Authorization failed", {
+                            extensions: {
+                                code: StatusCode.BAD_REQUEST,
+                            }
+                        });
+                    default:
+                        throw new GraphQLError("Something went wrong", {
+                            extensions: {
+                                code: StatusCode.INTERNAL_SERVER_ERROR,
+                            }
+                        });
+                }             
+            }
         },
 
         signup: async (
