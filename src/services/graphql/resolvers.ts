@@ -216,21 +216,37 @@ const resolvers = {
         ) => {
             // Note: The new private conversation will not created if that is exist already
             try {
+                let memberIds = members.split(",");
+                let membersInfo = await UserService.searchUser({ userIds: memberIds });
+
+                if (membersInfo.length !== memberIds) {
+                    throw new GraphQLError("Member not found", {
+                        extensions: {
+                            code: StatusCode.NOT_FOUND,
+                        }
+                    });
+                }
+
                 let data = await ChatService.createConversation({
                     ownerId: currentUserId,
                     name,
-                    memberIds: members.split(","),
+                    memberIds: memberIds,
                     type,
                 });
-
-                let membersInfo = await UserService.searchUser({ userIds: data.memberIds });
 
                 return {
                     ...data,
                     members: membersInfo,
                 };
             } catch (error: any) {
+                if (error instanceof GraphQLError) throw error;
                 switch (error.code) {
+                    case grpc.status.NOT_FOUND:
+                        throw new GraphQLError("Member not found", {
+                            extensions: {
+                                code: StatusCode.NOT_FOUND,
+                            }
+                        });
                     default:
                         logger.error(error.message);
                         throw new GraphQLError("Something went wrong", {
