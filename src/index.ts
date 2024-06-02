@@ -62,13 +62,13 @@ chatNamespace.on("connection", async (socket) => {
 
     socket.on("message", async (event) => {
         try {
-            let { conversationId, messageContent } = event;
-            let rpcMessage = await ChatService.createChatMessage({ conversationId, messageContent, fromUserId: socket.data.userId });
+            let { conversationId, content } = event;
+            let rpcMessage = await ChatService.createChatMessage({ conversationId, messageContent: content, fromUserId: socket.data.userId });
             
             let chatPayload = {
-                userId: socket.data.userId,
-                messageContent,
                 conversationId,
+                fromUserId: socket.data.userId,
+                content,
                 createdAt: rpcMessage.createdAt,
             }
             logger.info(chatPayload);
@@ -93,14 +93,14 @@ gqlServer
         expressMiddleware(gqlServer, {
             context: async ({ req, res }) => {
                 let accessToken = req.headers.authorization?.split(" ")[1] as string;
-                let user_id: string | null = null;
+                let userId: string | null = null;
                 if (accessToken) {
-                    let encoded = jwt.verify(accessToken, process.env.SECRET_KEY || "") as { user_id: string };
-                    user_id = encoded.user_id;
+                    let encoded = jwt.verify(accessToken, process.env.SECRET_KEY || "") as { userId: string };
+                    userId = encoded.userId;
                 }
                 return {
                     token: accessToken,
-                    currentUserId: user_id,
+                    currentUserId: userId,
                 }
             }
         })

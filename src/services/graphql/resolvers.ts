@@ -62,17 +62,17 @@ const resolvers = {
         ) => {
             let result = [];
             let rpcConversations = await ChatService.searchConversations({ memberIds: [currentUserId], page, limit, messageLimit });
-            for (let conversation of rpcConversations) {
-                let rpcMembers = await UserService.searchUser({ userIds: conversation.members });
+            for (let conversation of rpcConversations.conversations) {
+                let rpcMembers = await UserService.searchUser({ userIds: conversation.memberIds });
                 result.push({
-                    id: conversation.conversationId,
+                    id: conversation.id,
                     name: conversation.name,
                     type: conversation.type,
                     createdBy: null,
                     createdAt: conversation?.createdAt,
                     lastMessageAt: null,
                     members: rpcMembers.users,
-                    messages: rpcConversations.messages.map((m: any) => {
+                    messages: conversation.messages.map((m: any) => {
                         return {
                             ...m,
                             fromUser: rpcMembers.users.find((rpcUser: any) => rpcUser.id === m.fromUserId),
