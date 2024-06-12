@@ -51,13 +51,12 @@ chatNamespace.on("connection", async (socket) => {
     let rpcConversations = await ChatService.searchConversations({ memberIds: [userId] });
 
     for (let conversation of rpcConversations.conversations) {
-        let room: String = conversation.conversationId;
-        logger.info({
+        logger.debug({
             message: "Join conversation",
             userId: socket.data.userId,
-            conversationId: room,
+            conversationId: conversation.id,
         })
-        socket.join(String(room));
+        socket.join(conversation.id);
     }
 
     socket.on("message", async (event) => {
